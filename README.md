@@ -1,7 +1,7 @@
 # Example of Isomorphic React Application written in PureScript
 
 It's using
-[cofree-react-router](https://github.com/purescript-cofree-react-router) for
+[cofree-react-router](https://github.com/coot/purescript-cofree-react-router) for
 routing, the server is written using the
 [hyper](https://github.com/owickstrom/hyper) library.
 
@@ -10,7 +10,7 @@ In the frontend app the top most component rendered as:
 createElement browserRouterClass {router, notFound: Nothing} []
 ```
 where `browserRouterClass` comes from
-[cofree-react-router](https://github.com/purescript-cofree-react-router), on
+[cofree-react-router](https://github.com/coot/purescript-cofree-react-router), on
 the backend we can render the app using:
 ```
 runRouter url router
