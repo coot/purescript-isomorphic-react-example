@@ -1,0 +1,28 @@
+{
+  "name": "purescript-isomorphic-react-example",
+  "version": "0.0.1",
+  "description": "Isomorphic React App Example in Purescript",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "mkdirp": "^0.5.1",
+    "react": "^15.5.4",
+    "react-dom": "^15.5.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "afterinstall": "bower install",
+    "build": "mkdirp 'dist/static'; pulp browserify -O -m App -t dist/static/index.js",
+    "start": "pulp run -m Server",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react",
+    "isomorphic",
+    "purescript"
+  ],
+  "author": "Marcin Szamotulski",
+  "license": "MIT"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "purescript-isomorphic-react-example",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-prelude": "^3.0.0",
+    "purescript-console": "^3.0.0",
+    "purescript-react": "^3.0.0",
+    "purescript-cofree-react-router": "^2.1.1",
+    "purescript-hyper": "^0.7.3"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^3.0.0"
+  }
+}
