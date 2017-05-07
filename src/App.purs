@@ -89,19 +89,11 @@ musician = createClass $ (spec unit renderFn)
     { displayName = "Musician" }
   where
 
-    unsafeFromJust :: forall a. Maybe a -> a
-    unsafeFromJust = unsafePartial fromJust
-
-    unsafeGetMusicianRouteId :: NonEmpty Array Locations -> Int
-    unsafeGetMusicianRouteId ls = unsafeFromJust $ mid
-      where
-        mid = case unsafeFromJust $ (A.head $ tail ls) of
-          MusicianRoute id_ -> Just id_
-          otherwise -> Nothing
+    unsafeMusicianId :: Partial => Locations -> Int
+    unsafeMusicianId l = case l of MusicianRoute id_ -> id_
 
     renderFn this = do
-      unsafeCoerceEff $ log "<Musician />"
-      id_<- getProps this >>= pure <<< unsafeGetMusicianRouteId <<< _.args <<< unwrap
+      id_<- getProps this >>= pure <<< unsafePartial unsafeMusicianId <<< _.arg <<< unwrap
       case find ((id_ == _) <<< _.id <<< unwrap) (unwrap store) of
         Nothing -> pure $ D.div' [ D.text "404" ]
         Just (Musician m) ->
