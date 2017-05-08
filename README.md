@@ -21,3 +21,10 @@ where not found).  This is fine for react since it compares the html content
 if you wish to check the react code it is
 [here](https://github.com/facebook/react/blob/b1b4a2fb252f26fe10d29ba60d85ff89a85ff3ec/src/renderers/dom/stack/server/ReactMarkupChecksum.js#L45)
 ).
+
+## State
+
+The state is manged by
+[purescript-redox](https://github.com/coot/purescript-redox) which 
+is similar to `redux`, but the dsl - interpreter pair is a free monad
+paired with cofree comonad rather than redux actions with redux reducer.
