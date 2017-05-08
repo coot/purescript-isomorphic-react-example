@@ -85,8 +85,7 @@ main =
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <title>Purescript Isomorphic React App</title>
-          <script>window.__REDOX_STATE__ = """ <> (stringify $ encodeJson state) <> """</script>
-          <script>console.log(window.__REDOX_STATE__)</script>
+          <script id="redox-state" type="application/json">""" <> (stringify $ encodeJson state) <> """</script>
           <script defer src="/static/index.js"></script>
         </head>
         <body>

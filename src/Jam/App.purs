@@ -5,18 +5,20 @@ import Data.Array as A
 import React.DOM as D
 import React.DOM.Props as P
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (CONSOLE, log)
 import DOM (DOM)
 import DOM.HTML (window)
 import DOM.HTML.Types (Window, htmlDocumentToDocument)
 import DOM.HTML.Window (document)
+import DOM.Node.Node (textContent)
 import DOM.Node.NonElementParentNode (getElementById)
-import DOM.Node.Types (ElementId(..), documentToNonElementParentNode)
+import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode, elementToNode)
 import Data.Argonaut (Json, decodeJson, jsonParser)
-import Data.Either (Either, either)
+import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Lens (to)
 import Data.List (List(..), (:))
-import Data.Maybe (Maybe(..), fromJust, maybe)
+import Data.Maybe (Maybe(..), fromJust)
 import Data.Newtype (class Newtype, unwrap)
 import Jam.App.RunDSL (interpret)
 import Jam.Types (Musician(..))
@@ -141,26 +143,35 @@ foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (foral
 readRedoxState :: forall eff. Window -> Eff (dom :: DOM | eff) (Maybe Json)
 readRedoxState = readRedoxState_ Just Nothing
 
-main :: forall eff. Eff (dom :: DOM, redox :: REDOX | eff) Unit
+main :: forall eff. Eff (dom :: DOM, redox :: REDOX, console :: CONSOLE | eff) Unit
 main = do
     w <- window
     ms <- readRedoxState w
-    let mstate = (join $ (castToMaybe <<< fromJson) <$> ms) :: Maybe (Array Musician)
-    el <- findElm
-    st <- mkStore (maybe [] id mstate)
+    el <- findElmById (ElementId "app")
+    jsonStr <- findElmById (ElementId "redox-state") >>= textContent <<< elementToNode
+    let estate = parse jsonStr
+    logParseErr estate
+    st <- mkStore (either (const []) id estate)
     let cls = withStore st dispatch browserRouterClass
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
     dispatch = Redox.dispatch (const $ pure unit) interpret
+    
+    parse :: String -> Either String (Array Musician)
+    parse str = do
+      json <- jsonParser str
+      decodeJson json
 
-    fromJson :: Json -> Either String (Array Musician)
-    fromJson = decodeJson
+    logParseErr :: forall e. Either String (Array Musician) -> Eff ( console :: CONSOLE | e) Unit
+    logParseErr (Left err) = log err
+    logParseErr (Right _) = pure unit
 
     castDocument = documentToNonElementParentNode <<< htmlDocumentToDocument
 
     castToMaybe :: forall a b. Either a b -> Maybe b
     castToMaybe = either (\_ -> Nothing) Just
 
-    findElm = do
-      el <- window >>= document >>= getElementById (ElementId "app") <<< castDocument
+    findElmById :: forall e. ElementId -> Eff (dom :: DOM | e) Element
+    findElmById _id = do
+      el <- window >>= document >>= getElementById _id <<< castDocument
       pure $ unsafePartial fromJust el

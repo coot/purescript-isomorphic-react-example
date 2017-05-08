@@ -14,8 +14,8 @@
   "devDependencies": {},
   "scripts": {
     "afterinstall": "bower install",
-    "build": "mkdirp 'dist/static'; pulp browserify -O -m JazzCollection.App -t dist/static/index.js",
-    "start": "pulp run -m JazzCollection.Server",
+    "build": "mkdirp 'dist/static'; pulp browserify -O -m Jam.App -t dist/static/index.js",
+    "start": "pulp run -m Jam.Server",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

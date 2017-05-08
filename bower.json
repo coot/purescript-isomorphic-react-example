@@ -15,8 +15,7 @@
     "purescript-redox": "git://github.com/coot/purescript-redox#7faa973c41f46c3911e0204730b87d60f6406743",
     "purescript-react-redox": "git://github.com/coot/purescript-react-redox#196c5f71c091adfbac7f6067eb7690849ce7b5e5",
     "purescript-free": "^4.0.0",
-    "purescript-argonaut": "^3.0.0",
-    "purescript-base64": "^2.1.0"
+    "purescript-argonaut": "^3.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0"
