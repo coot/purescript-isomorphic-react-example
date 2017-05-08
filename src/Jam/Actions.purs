@@ -1,22 +1,10 @@
-module Actions where
+module Jam.Actions where
 
 import Prelude
 import Control.Monad.Free (Free, liftF)
 import Data.List (List)
 import Data.Newtype (class Newtype)
-
-newtype Musician = Musician
-  { id :: Int
-  , name :: String
-  , description :: String
-  , wiki :: String
-  , generes :: List String
-  }
-
-derive instance newtypeMusician :: Newtype Musician _
-
-instance showMusician :: Show Musician where
-  show (Musician m) = "Musician " <> m.name
+import Jam.Types (Musician)
 
 data MusCmd a
   = AddMusician Musician a

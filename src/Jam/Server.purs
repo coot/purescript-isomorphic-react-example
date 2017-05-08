@@ -1,13 +1,13 @@
-module Server where
+module Jam.Server where
 
 import Prelude
 import Data.String as S
-import Actions (Musician(..))
-import App (Locations, router)
 import Control.IxMonad ((:*>), (:>>=))
 import Control.Monad.Aff (nonCanceler)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
+import Data.Argonaut (encodeJson)
+import Data.Argonaut.Core (stringify)
 import Data.List (List(..), (:))
 import Data.Maybe (maybe)
 import Data.MediaType.Common (textHTML)
@@ -17,6 +17,8 @@ import Hyper.Node.Server (defaultOptionsWithLogging, runServer)
 import Hyper.Request (getRequestData)
 import Hyper.Response (closeHeaders, contentType, headers, respond, writeStatus)
 import Hyper.Status (statusNotFound, statusOK)
+import Jam.App (Locations, router)
+import Jam.Types (Musician(..))
 import Node.Buffer (BUFFER)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
@@ -75,14 +77,16 @@ main =
     renderRouter :: String -> String
     renderRouter url = renderToString $ createElement (entryCls router store) {url} []
 
-    renderHtml :: String -> String
-    renderHtml appHtml =
+    renderHtml :: Array Musician -> String -> String
+    renderHtml state appHtml =
       """
       <!DOCTYPE html>
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <title>Purescript Isomorphic React App</title>
+          <script>window.__REDOX_STATE__ = """ <> (stringify $ encodeJson state) <> """</script>
+          <script>console.log(window.__REDOX_STATE__)</script>
           <script defer src="/static/index.js"></script>
         </head>
         <body>
@@ -102,6 +106,6 @@ main =
                      writeStatus statusOK
                      :*> contentType textHTML
                      :*> closeHeaders
-                     :*> respond (renderHtml (renderRouter url))
+                     :*> respond (renderHtml initialState (renderRouter url))
 
   in runServer defaultOptionsWithLogging {} app

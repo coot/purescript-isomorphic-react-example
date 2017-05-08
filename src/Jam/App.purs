@@ -1,26 +1,26 @@
-module App where
+module Jam.App where
 
 import Prelude
 import Data.Array as A
 import React.DOM as D
 import React.DOM.Props as P
-import Actions (Musician(..))
-import App.RunDSL (interpret)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (log)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.HTML (window)
-import DOM.HTML.Types (htmlDocumentToDocument)
+import DOM.HTML.Types (Window, htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (ElementId(..), documentToNonElementParentNode)
-import Data.Foldable (find, intercalate)
+import Data.Argonaut (Json, decodeJson, jsonParser)
+import Data.Either (Either, either)
+import Data.Foldable (intercalate)
 import Data.Lens (to)
 import Data.List (List(..), (:))
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..), fromJust, maybe)
 import Data.Newtype (class Newtype, unwrap)
-import Data.NonEmpty (NonEmpty, tail)
+import Debug.Trace (traceAnyA)
+import Jam.App.RunDSL (interpret)
+import Jam.Types (Musician(..))
 import Partial.Unsafe (unsafePartial)
 import React (ReactClass, ReactElement, createClass, createElement, getChildren, getProps, readState, spec)
 import React.Redox (connect, withStore)
@@ -137,16 +137,31 @@ router =
     [ Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ []
     ]
 
+foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Window -> Eff (dom :: DOM | eff) (Maybe Json)
+
+readRedoxState :: forall eff. Window -> Eff (dom :: DOM | eff) (Maybe Json)
+readRedoxState = readRedoxState_ Just Nothing
+
 main :: forall eff. Eff (dom :: DOM, redox :: REDOX | eff) Unit
 main = do
+    w <- window
+    ms <- readRedoxState w
+    traceAnyA ms
+    let mstate = (join $ (castToMaybe <<< fromJson) <$> ms) :: Maybe (Array Musician)
     el <- findElm
-    st <- mkStore initialState
+    st <- mkStore (maybe [] id mstate)
     let cls = withStore st dispatch browserRouterClass
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
     dispatch = Redox.dispatch (const $ pure unit) interpret
 
+    fromJson :: Json -> Either String (Array Musician)
+    fromJson = decodeJson
+
     castDocument = documentToNonElementParentNode <<< htmlDocumentToDocument
+
+    castToMaybe :: forall a b. Either a b -> Maybe b
+    castToMaybe = either (\_ -> Nothing) Just
 
     findElm = do
       el <- window >>= document >>= getElementById (ElementId "app") <<< castDocument

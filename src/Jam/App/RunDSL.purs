@@ -1,10 +1,11 @@
-module App.RunDSL where
+module Jam.App.RunDSL where
 
 import Prelude
 import Data.Array as A
 import Control.Comonad.Cofree (Cofree, exploreM, unfoldCofree)
 import Control.Monad.Aff (Aff)
-import Actions (Musician(..), MusCmd(..), MusDSL)
+import Jam.Actions (MusCmd(..), MusDSL)
+import Jam.Types (Musician(..))
 
 newtype RunApp eff a = RunApp
   { addMusician :: Musician -> Aff eff a
