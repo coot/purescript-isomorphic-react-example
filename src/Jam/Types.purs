@@ -13,6 +13,13 @@ newtype Musician = Musician
   , generes :: List String
   }
 
+type NewMusician =
+  { name :: String
+  , description :: String
+  , wiki :: String
+  , generes :: List String
+  }
+
 derive instance newtypeMusician :: Newtype Musician _
 
 instance showMusician :: Show Musician where

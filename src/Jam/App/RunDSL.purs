@@ -4,11 +4,14 @@ import Prelude
 import Data.Array as A
 import Control.Comonad.Cofree (Cofree, exploreM, unfoldCofree)
 import Control.Monad.Aff (Aff)
+import Data.Array (foldMap)
+import Data.Newtype (ala, un)
+import Data.Ord.Max (Max(..))
 import Jam.Actions (MusCmd(..), MusDSL)
-import Jam.Types (Musician(..))
+import Jam.Types (Musician(..), NewMusician)
 
 newtype RunApp eff a = RunApp
-  { addMusician :: Musician -> Aff eff a
+  { addMusician :: NewMusician -> Aff eff a
   , removeMusician :: Int -> Aff eff a
   }
 
@@ -19,8 +22,13 @@ type AppInterp eff a = Cofree (RunApp eff) a
 mkAppInterp :: forall eff. Array Musician -> AppInterp eff (Array Musician)
 mkAppInterp state = unfoldCofree id next state
   where
-    addMusician :: Array Musician -> Musician -> Aff eff (Array Musician)
-    addMusician st = pure <<< A.snoc st
+    addMusician
+      :: Array Musician
+      -> NewMusician
+      -> Aff eff (Array Musician)
+    addMusician st m =
+      let max = ala Max foldMap (_.id <<< un Musician <$> st)
+      in pure $ A.snoc st (Musician { id: (max + 1), name: m.name, description : m.description, wiki: m.wiki, generes: m.generes })
 
     removeMusician :: Array Musician -> Int -> Aff eff (Array Musician)
     removeMusician st mId = pure $ A.filter (\(Musician m) -> m.id /= mId) st

@@ -2,6 +2,7 @@ module Jam.App where
 
 import Prelude
 import Data.Array as A
+import Data.List as L
 import React.DOM as D
 import React.DOM.Props as P
 import Control.Monad.Eff (Eff)
@@ -16,21 +17,26 @@ import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode, e
 import Data.Argonaut (Json, decodeJson, jsonParser)
 import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
-import Data.Lens (to)
+import Data.Lens (lens, over, to, view)
+import Data.Lens.Types (Lens')
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Newtype (class Newtype, unwrap)
+import Data.String (Pattern(..), split) as S
+import Jam.Actions (addMusician)
 import Jam.App.RunDSL (interpret)
-import Jam.Types (Musician(..))
+import Jam.Types (Musician(..), NewMusician)
 import Partial.Unsafe (unsafePartial)
-import React (ReactClass, ReactElement, createClass, createElement, getChildren, getProps, spec)
-import React.Redox (connect, withStore)
+import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import React.Redox (connect, dispatch, withStore)
 import React.Router (Route(..), RouteProps, browserRouterClass, link', (:+))
 import React.Router.Types (Router)
 import ReactDOM (render)
+import ReactHocs.Context (accessContext)
 import Redox (REDOX, mkStore)
 import Redox (dispatch) as Redox
 import Routing.Match.Class (int, lit)
+import Unsafe.Coerce (unsafeCoerce)
 
 data Locations
   = HomeRoute
@@ -81,13 +87,79 @@ homeRouteCls = createClass $  (spec unit renderFn)
   where
     indexConn = connect (to id) (\_ musicians _ -> { musicians }) index
 
+    addMusician = accessContext $ createClass addMusicianSpec
+
     renderFn this = do
       chlds <- getChildren this
       pure $ D.main' $
         [ link' "/" [ D.text "home" ]
         , createElement indexConn unit []
+        , createElement addMusician unit []
         ]
         <> chlds
+
+addMusicianSpec :: forall eff. ReactSpec Unit NewMusician  eff
+addMusicianSpec = (spec init renderFn) { displayName = "AddMusician" }
+  where
+    init = { name: "", description: "", wiki: "", generes: Nil }
+
+    nameL = lens (_.name) (_ { name = _ })
+    descL = lens (_.description) (_ { description = _ })
+    wikiL = lens (_.wiki) (_ { wiki = _ })
+
+    geneL :: forall r. Lens' { generes :: List String | r } String
+    geneL = lens (L.intercalate " " <<< _.generes) (\st gstr -> st { generes = L.fromFoldable (S.split (S.Pattern " ") gstr) })
+
+    updateThroughL
+      :: forall e
+       .ReactThis Unit NewMusician
+      -> Lens' NewMusician String
+      -> String
+      -> Eff (state :: ReactState ReadWrite | e) Unit
+    updateThroughL this _lens x =
+      transformState this (over _lens (const x))
+
+    targetValue :: Event -> String
+    targetValue ev = (unsafeCoerce ev).target.value
+
+    updateHandler
+      :: forall e
+       . ReactThis Unit NewMusician
+      -> Lens' NewMusician String
+      -> Event
+      -> EventHandlerContext e Unit NewMusician Unit
+    updateHandler this _lens ev = do
+      value <- pure (targetValue ev)
+      updateThroughL this _lens value
+
+    submitFn this ev = do
+      _ <- preventDefault ev
+      state <- readState this
+      _ <- writeState this init
+      dispatch this (addMusician state)
+
+    renderFn this = do
+      state <- readState this
+      pure $ D.form [ P._id "add-musician", P.onSubmit (submitFn this) ]
+        [ D.label'
+          [ D.text "name"
+          , D.input [ P._type "text", P.value state.name, P.onChange (updateHandler this nameL) ] []
+          ]
+        , D.label'
+          [ D.text "description"
+          , D.textarea [ P.value state.description, P.onChange (updateHandler this descL) ] []
+          ]
+        , D.label'
+          [ D.text "WikiPedia link"
+          , D.input [ P._type "text", P.value state.wiki, P.onChange (updateHandler this wikiL) ] []
+          ]
+        , D.label'
+          [ D.text "geners"
+          , D.input [ P._type "text", P.value (view geneL state), P.onChange (updateHandler this geneL) ] []
+          ]
+        , D.button' [ D.text "add" ]
+        ]
+
 
 musicianRouteCls :: ReactClass (RouteProps Locations)
 musicianRouteCls = createClass $ (spec unit renderFn)
