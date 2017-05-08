@@ -18,11 +18,10 @@ import Data.Lens (to)
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..), fromJust, maybe)
 import Data.Newtype (class Newtype, unwrap)
-import Debug.Trace (traceAnyA)
 import Jam.App.RunDSL (interpret)
 import Jam.Types (Musician(..))
 import Partial.Unsafe (unsafePartial)
-import React (ReactClass, ReactElement, createClass, createElement, getChildren, getProps, readState, spec)
+import React (ReactClass, ReactElement, createClass, createElement, getChildren, getProps, spec)
 import React.Redox (connect, withStore)
 import React.Router (Route(..), RouteProps, browserRouterClass, link', (:+))
 import React.Router.Types (Router)
@@ -146,7 +145,6 @@ main :: forall eff. Eff (dom :: DOM, redox :: REDOX | eff) Unit
 main = do
     w <- window
     ms <- readRedoxState w
-    traceAnyA ms
     let mstate = (join $ (castToMaybe <<< fromJson) <$> ms) :: Maybe (Array Musician)
     el <- findElm
     st <- mkStore (maybe [] id mstate)

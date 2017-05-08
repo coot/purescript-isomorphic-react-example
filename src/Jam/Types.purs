@@ -3,7 +3,7 @@ module Jam.Types where
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (~>), (.?))
 import Data.List (List, toUnfoldable, fromFoldable)
 import Data.Newtype (class Newtype)
-import Prelude (class Show, bind, discard, pure, (<>), ($), (<$>))
+import Prelude (class Show, bind, pure, (<>), ($))
 
 newtype Musician = Musician
   { id :: Int

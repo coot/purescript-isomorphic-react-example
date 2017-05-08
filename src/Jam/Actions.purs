@@ -2,8 +2,6 @@ module Jam.Actions where
 
 import Prelude
 import Control.Monad.Free (Free, liftF)
-import Data.List (List)
-import Data.Newtype (class Newtype)
 import Jam.Types (Musician)
 
 data MusCmd a
