@@ -16,7 +16,8 @@
     "purescript-react-redox": "git://github.com/coot/purescript-react-redox#196c5f71c091adfbac7f6067eb7690849ce7b5e5",
     "purescript-free": "^4.0.0",
     "purescript-argonaut": "^3.0.0",
-    "purescript-orders": "^3.0.0"
+    "purescript-orders": "^3.0.0",
+    "purescript-affjax": "^4.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0"

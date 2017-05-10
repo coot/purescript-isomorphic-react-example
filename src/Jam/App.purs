@@ -26,6 +26,7 @@ import Data.String (Pattern(..), split) as S
 import Jam.Actions (addMusician)
 import Jam.App.RunDSL (interpret)
 import Jam.Types (Musician(..), NewMusician)
+import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
 import React.Redox (connect, dispatch, withStore)
@@ -215,7 +216,7 @@ foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (foral
 readRedoxState :: forall eff. Window -> Eff (dom :: DOM | eff) (Maybe Json)
 readRedoxState = readRedoxState_ Just Nothing
 
-main :: forall eff. Eff (dom :: DOM, redox :: REDOX, console :: CONSOLE | eff) Unit
+main :: forall eff. Eff (dom :: DOM, redox :: REDOX, console :: CONSOLE, ajax :: AJAX | eff) Unit
 main = do
     w <- window
     ms <- readRedoxState w
