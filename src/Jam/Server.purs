@@ -2,22 +2,31 @@ module Jam.Server where
 
 import Prelude
 import Data.String as S
-import Control.IxMonad ((:*>), (:>>=))
+import Control.IxMonad (ipure, (:*>), (:>>=))
 import Control.Monad.Aff (nonCanceler)
+import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Data.Argonaut (encodeJson)
+import Control.Monad.Eff.Unsafe (unsafePerformEff)
+import Control.Monad.Free (liftF)
+import Data.Argonaut (class EncodeJson, Json, decodeJson, encodeJson, jsonEmptyObject, jsonParser, (:=), (~>))
 import Data.Argonaut.Core (stringify)
+import Data.Either (Either(..))
+import Data.HTTP.Method (Method(..))
 import Data.List (List(..), (:))
 import Data.Maybe (maybe)
-import Data.MediaType.Common (textHTML)
+import Data.MediaType.Common (textHTML, applicationJSON)
 import Data.Tuple (Tuple(..))
+import Debug.Trace (spy)
 import Hyper.Node.FileServer (fileServer)
 import Hyper.Node.Server (defaultOptionsWithLogging, runServer)
-import Hyper.Request (getRequestData)
+import Hyper.Request (getRequestData, readBody)
 import Hyper.Response (closeHeaders, contentType, headers, respond, writeStatus)
-import Hyper.Status (statusNotFound, statusOK)
+import Hyper.Status (statusBadRequest, statusNotFound, statusOK)
+import Jam.Actions (MusCmd)
 import Jam.App (Locations, router)
+import Jam.Server.RunDSL (interpret)
 import Jam.Types (Musician(..))
 import Node.Buffer (BUFFER)
 import Node.Encoding (Encoding(UTF8))
@@ -29,7 +38,7 @@ import React.Redox (withStore)
 import React.Router (RouteProps, runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
-import Redox (Store, mkStoreG)
+import Redox (REDOX, Store, dispatch, getState, mkStoreG)
 
 initialState :: Array Musician
 initialState =
@@ -57,8 +66,20 @@ entryCls router store = withStore store (\_ _ -> pure nonCanceler) cls
     renderFn { url } = maybe (div' []) id $ runRouter url router
 
 
+data ApiRespond
+  = ApiError String
+  | ApiOK
 
-main :: forall e. Eff (console :: CONSOLE, http :: HTTP, fs :: FS, buffer :: BUFFER | e) Unit
+instance encodeJson :: EncodeJson ApiRespond where
+  encodeJson (ApiError err) =
+       "status" := "error"
+    ~> "error" := err
+    ~> jsonEmptyObject
+  encodeJson ApiOK =
+       "status" := "ok"
+    ~> jsonEmptyObject
+
+main :: forall e. Eff (console :: CONSOLE, http :: HTTP, fs :: FS, buffer :: BUFFER, avar :: AVAR, redox :: REDOX | e) Unit
 main =
   let
     app = 
@@ -67,6 +88,8 @@ main =
 
     store :: Store (Array Musician)
     store = mkStoreG initialState
+
+    disp = dispatch (\_ -> pure unit) interpret store
 
     -- | On the fronend the top most component is `browserRouterClass` but
     -- | since its render method runs `runRouter url router` we can use
@@ -99,12 +122,45 @@ main =
       :*> headers []
       :*> respond (Tuple "<h1>Not Found</h1>" UTF8)
 
-    handle url = if S.take 8 url == "/static/" || url == "/favicon.ico"
-                   then fileServer "dist" fileNotFound
-                   else 
-                     writeStatus statusOK
-                     :*> contentType textHTML
-                     :*> closeHeaders
-                     :*> respond (renderHtml initialState (renderRouter url))
+    decode :: String -> Either String (MusCmd (Array Musician -> Array Musician))
+    decode body = do
+      json <- jsonParser body
+      decodeJson json
+
+    handleApiRequest body =
+      case decode body of
+        Left err ->
+          writeStatus statusBadRequest
+          :*> contentType applicationJSON
+          :*> closeHeaders
+          :*> respond (stringify $ encodeJson (ApiError err))
+        Right musCmd ->
+          liftEff (disp (liftF musCmd))
+          :*> writeStatus statusOK
+          :*> contentType applicationJSON
+          :*> closeHeaders
+          :*> respond (stringify $ encodeJson ApiOK)
+
+    handle url =
+      if S.take 8 url == "/static/" || url == "/favicon.ico"
+        then fileServer "dist" fileNotFound
+        else 
+          if url == "/api"
+            then
+              getRequestData :>>= \rd ->
+                case rd.method of
+                  Left POST ->
+                    readBody :>>= handleApiRequest
+                  _ ->
+                    writeStatus statusBadRequest
+                    :*> contentType applicationJSON
+                    :*> closeHeaders
+                    :*> respond (stringify $ encodeJson (ApiError "api only accepts POST requests"))
+            else
+              writeStatus statusOK
+              :*> contentType textHTML
+              :*> closeHeaders
+              :*> liftEff (getState store)
+              :>>= \state -> respond (renderHtml state (renderRouter url))
 
   in runServer defaultOptionsWithLogging {} app
