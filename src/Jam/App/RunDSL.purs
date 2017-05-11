@@ -3,14 +3,21 @@ module Jam.App.RunDSL where
 import Prelude
 import Data.Array as A
 import Control.Comonad.Cofree (Cofree, exploreM, unfoldCofree)
-import Control.Monad.Aff (Aff)
-import Data.Argonaut (Json, encodeJson)
+import Control.Monad.Aff (Aff, runAff)
+import Control.Monad.Aff.Console (CONSOLE)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (error, log)
+import Data.Argonaut (Json, decodeJson, encodeJson)
 import Data.Array (foldMap)
+import Data.Either (Either(..))
+import Data.Foldable (foldl, sequence_)
 import Data.Newtype (ala, un)
 import Data.Ord.Max (Max(..))
-import Jam.Actions (MusCmd(..), MusDSL)
-import Jam.Types (Musician(..), NewMusician)
+import Jam.Actions (MusCmd(..))
+import Jam.Types (ApiResponse(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, Affjax, post)
+import Redox (REDOX, Store, getState, getSubs)
+import Redox.Free (Interp)
 
 newtype RunApp eff a = RunApp
   { addMusician :: NewMusician -> Aff eff a
@@ -21,34 +28,82 @@ derive instance functorRunApp :: Functor (RunApp eff)
 
 type AppInterp eff a = Cofree (RunApp eff) a
 
-mkAppInterp :: forall eff. Array Musician -> AppInterp (ajax :: AJAX | eff) (Array Musician)
-mkAppInterp state = unfoldCofree id next state
+mkAppInterp
+  :: forall eff
+   . Store (Array Musician)
+  -> Array Musician
+  -> AppInterp (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)
+mkAppInterp store state = unfoldCofree id next state
   where
     addMusician
       :: Array Musician
       -> NewMusician
-      -> Aff (ajax :: AJAX | eff) (Array Musician)
+      -> Aff (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)
     addMusician st m =
       let max = ala Max foldMap (_.id <<< un Musician <$> st)
           mr = { name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
-          mus = Musician { id: (max + 1), name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
+          mId = max + 1
+          mus = Musician { id: mId, name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
+
+          updateMId :: Int -> Int -> Array Musician -> Array Musician
+          updateMId oldId newId = foldl f []
+            where
+              f acu (m_@Musician r) =
+                if r.id == oldId
+                  then A.snoc acu (Musician r { id = newId })
+                  else A.snoc acu m_
+
+          removeM :: Array Musician -> Array Musician
+          removeM = A.filter (\(Musician m_) -> m_.id /= mId)
+
+          runSubscription = do
+            subs <- getSubs store
+            sta <- getState store
+            sequence_ ((_ $ sta) <$> subs)
+
+          onError = const $ pure unit
+          onSuccess resp =
+            case decodeJson resp.response of
+              Right (r@ApiMusician (Musician m_)) -> do
+                log $ "api resp: " <> show r
+                _ <- pure $ updateMId mId m_.id <$> store
+                runSubscription
+              Right r -> do
+                log $ "api resp: " <> show r
+                _ <- pure $ removeM <$> store
+                runSubscription
+              Left err -> do
+                error $ show ("Error parsing response: " <> err)
+                _ <- pure $ removeM <$> store
+                runSubscription
+
+          apiRequest :: Affjax (console :: CONSOLE, redox :: REDOX | eff) Json
+          apiRequest = post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician)))
       in do
-        _ <- (post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician))) :: Affjax eff Json)
+        -- run api request asynchronously
+        _ <- liftEff $ runAff onError onSuccess apiRequest
         pure $ A.snoc st mus
 
-    removeMusician :: Array Musician -> Int -> Aff (ajax :: AJAX | eff) (Array Musician)
-    removeMusician st mId = do
-      _ <- (post "/api" (encodeJson $ (RemoveMusician mId id :: MusCmd (Array Musician -> Array Musician))) :: Affjax eff Json)
-      pure $ A.filter (\(Musician m) -> m.id /= mId) st
+    removeMusician :: Array Musician -> Int -> Aff (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)
+    removeMusician st mId =
+      let
+        apiRequest :: Affjax (console :: CONSOLE, redox :: REDOX | eff) Json
+        apiRequest = post "/api" (encodeJson $ (RemoveMusician mId id :: MusCmd (Array Musician -> Array Musician)))
+      in do
+        _ <- liftEff $ runAff (const $ pure unit) (const $ pure unit) apiRequest
+        pure $ A.filter (\(Musician m_) -> m_.id /= mId) st
 
-    next :: Array Musician -> RunApp (ajax :: AJAX | eff) (Array Musician)
+    next :: Array Musician -> RunApp (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)
     next st = RunApp
       { addMusician: addMusician st
       , removeMusician: removeMusician st
       }
 
-interpret :: forall eff. MusDSL (Array Musician -> Array Musician) -> Array Musician -> Aff (ajax :: AJAX | eff) (Array Musician)
-interpret cmds st = exploreM pair cmds $ mkAppInterp st
+mkInterpret
+  :: forall eff
+   . Store (Array Musician)
+  -> Interp MusCmd (Array Musician) (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff)
+mkInterpret store cmds st = exploreM pair cmds $ mkAppInterp store st
   where
     pair :: forall e x y. MusCmd (x -> y) -> RunApp e x -> Aff e y
     pair (AddMusician m f) (RunApp i) = f <$> i.addMusician m

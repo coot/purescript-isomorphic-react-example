@@ -47,6 +47,11 @@ instance decodeJsonMusCmd :: DecodeJson (MusCmd (Array Musician -> Array Musicia
         pure $ RemoveMusician _id id
       _ -> throwError "no such type"
 
+-- | On the client side we interpret this monad. But since it is not
+-- | serializable we rather serialize and send to the backend the unlifted
+-- | `MusCmd` values.  For each one of those we have a function that
+-- | interpretes it on the backend what we do without build a cofree comonad
+-- | (see notes in `Server/RunDSL.purs`).
 type MusDSL a = Free MusCmd a
 
 addMusician :: NewMusician -> MusDSL (Array Musician -> Array Musician)

@@ -24,7 +24,7 @@ import Data.Maybe (Maybe(..), fromJust)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (Pattern(..), split, trim, null) as S
 import Jam.Actions (addMusician)
-import Jam.App.RunDSL (interpret)
+import Jam.App.RunDSL (mkInterpret)
 import Jam.Types (Musician(..), NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
@@ -209,10 +209,10 @@ main = do
     let estate = parse jsonStr
     logParseErr estate
     st <- mkStore (either (const initialState) id estate)
-    let cls = withStore st dispatch browserRouterClass
+    let cls = withStore st (dispatch st) browserRouterClass
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
-    dispatch = Redox.dispatch (const $ pure unit) interpret
+    dispatch store = Redox.dispatch (const $ pure unit) (mkInterpret store)
     
     parse :: String -> Either String (Array Musician)
     parse str = do

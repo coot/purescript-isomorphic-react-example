@@ -5,11 +5,11 @@ import Data.String as S
 import Control.IxMonad ((:*>), (:>>=))
 import Control.Monad.Aff (Aff, nonCanceler)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Control.Monad.Free (liftF)
-import Data.Argonaut (class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, jsonParser, (:=), (~>))
+import Data.Argonaut (decodeJson, encodeJson, jsonParser)
 import Data.Argonaut.Core (stringify)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
@@ -22,34 +22,21 @@ import Hyper.Node.Server (HttpRequest, HttpResponse, defaultOptionsWithLogging, 
 import Hyper.Request (getRequestData, readBody)
 import Hyper.Response (ResponseEnded, StatusLineOpen, closeHeaders, contentType, headers, respond, writeStatus)
 import Hyper.Status (statusBadRequest, statusNotFound, statusOK)
-import Jam.Actions (MusCmd)
+import Jam.Actions (MusCmd(..))
 import Jam.App (Locations, router)
-import Jam.Server.RunDSL (interpret)
-import Jam.Types (Musician, initialState)
+import Jam.Server.RunDSL (addMusician, removeMusician)
+import Jam.Types (Musician, initialState, ApiResponse(..))
 import Node.Buffer (BUFFER)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
 import Node.HTTP (HTTP)
 import React (ReactClass, createClassStateless, createElement)
 import React.DOM (div')
-import React.Redox (DispatchFn, withStore)
+import React.Redox (withStore)
 import React.Router (RouteProps, runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
-import Redox (REDOX, Store, dispatch, getState, mkStore)
-
-data ApiRespond
-  = ApiError String
-  | ApiOK
-
-instance encodeJson :: EncodeJson ApiRespond where
-  encodeJson (ApiError err) =
-       "status" := "error"
-    ~> "error" := err
-    ~> jsonEmptyObject
-  encodeJson ApiOK =
-       "status" := "ok"
-    ~> jsonEmptyObject
+import Redox (REDOX, Store, getState, mkStore, setState)
 
 type ServerAffM e = Aff
   ( http :: HTTP
@@ -76,9 +63,6 @@ handleApiRequest
       Unit
 handleApiRequest store =
   let
-    disp :: DispatchFn (Array Musician) MusCmd (avar :: AVAR, buffer :: BUFFER, console :: CONSOLE, fs :: FS, http :: HTTP | e)
-    disp = dispatch (\_ -> pure unit) interpret store
-
     decode :: String -> Either String (MusCmd (Array Musician -> Array Musician))
     decode body = do
       json <- jsonParser body
@@ -90,11 +74,24 @@ handleApiRequest store =
           Left POST ->
             readBody :>>= decode >>>
               case _ of
-                Right musCmd ->
-                  liftEff (disp (liftF musCmd))
-                  :*> writeStatus statusOK
+                Right (AddMusician m _) ->
+                  writeStatus statusOK
                   :*> contentType applicationJSON
                   :*> closeHeaders
+                  :*> liftAff do
+                        state <- liftEff $ getState store
+                        { newMusician, newState } <- addMusician state m
+                        _ <- liftEff $ setState store newState
+                        pure newMusician
+                  :>>= (respond <<< stringify <<< encodeJson <<< ApiMusician)
+                Right (RemoveMusician mId _) ->
+                  writeStatus statusBadRequest
+                  :*> contentType applicationJSON
+                  :*> closeHeaders
+                  :*> liftAff do
+                        state <- liftEff $ getState store
+                        newState <- removeMusician state mId
+                        liftEff $ setState store newState
                   :*> respond (stringify $ encodeJson ApiOK)
                 Left err ->
                   writeStatus statusBadRequest
@@ -206,4 +203,3 @@ main :: forall e. Eff (console :: CONSOLE, http :: HTTP, fs :: FS, buffer :: BUF
 main = do
   store <- mkStore initialState
   runServer defaultOptionsWithLogging {} (app store)
-
