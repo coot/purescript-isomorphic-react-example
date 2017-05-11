@@ -8,7 +8,7 @@ import Data.Argonaut (Json, encodeJson)
 import Data.Array (foldMap)
 import Data.Newtype (ala, un)
 import Data.Ord.Max (Max(..))
-import Jam.Actions (MusCmd, MusCmd(..), MusDSL)
+import Jam.Actions (MusCmd(..), MusDSL)
 import Jam.Types (Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, Affjax, post)
 
@@ -33,11 +33,13 @@ mkAppInterp state = unfoldCofree id next state
           mr = { name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
           mus = Musician { id: (max + 1), name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
       in do
-        _ <- (post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician))) :: Affjax _ Json)
+        _ <- (post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician))) :: Affjax eff Json)
         pure $ A.snoc st mus
 
     removeMusician :: Array Musician -> Int -> Aff (ajax :: AJAX | eff) (Array Musician)
-    removeMusician st mId = pure $ A.filter (\(Musician m) -> m.id /= mId) st
+    removeMusician st mId = do
+      _ <- (post "/api" (encodeJson $ (RemoveMusician mId id :: MusCmd (Array Musician -> Array Musician))) :: Affjax eff Json)
+      pure $ A.filter (\(Musician m) -> m.id /= mId) st
 
     next :: Array Musician -> RunApp (ajax :: AJAX | eff) (Array Musician)
     next st = RunApp

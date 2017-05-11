@@ -19,13 +19,13 @@ import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
-import Data.List (List(..), (:))
+import Data.List (List(..))
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Newtype (class Newtype, unwrap)
-import Data.String (Pattern(..), split) as S
+import Data.String (Pattern(..), split, trim, null) as S
 import Jam.Actions (addMusician)
 import Jam.App.RunDSL (interpret)
-import Jam.Types (Musician(..), NewMusician)
+import Jam.Types (Musician(..), NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
@@ -52,24 +52,6 @@ instance showLocations :: Show Locations where
 newtype Store = Store (Array Musician)
 
 derive instance newtypeStore :: Newtype Store _
-
-initialState :: Array Musician
-initialState =
-  [ Musician
-      { id: 1
-      , name: "Pat Metheny"
-      , description: """Patrick Bruce "Pat" Metheny is an American jazz guitarist and composer."""
-      , wiki: "https://en.wikipedia.org/wiki/Pat_Metheny"
-      , generes: ("Jazz" : "jazz fusion" : "Latin jazz" : "world" : "experimental" : "avant-gard" : Nil)
-      }
-  , Musician
-      { id: 2
-      , name: "John Scofield"
-      , description: """John Scofield, often referred to as "Sco", is an American jazz-rock guitarist and composer, who has played and collaborated with Miles Davis, Dave Liebman, Joe Henderson, Charles Mingus, Joey DeFrancesco, Herbie Hancock, Pat Metheny, Bill Frisell, Pat Martino, Mavis Staples, Phil Lesh, Billy Cobham, Medeski Martin & Wood, George Duke, Jaco Pastorius, John Mayer, Robert Glasper, and Gov't Mule."""
-      , wiki: "https://en.wikipedia.org/wiki/John_Scofield"
-      , generes: ("Jazz" : "jazz fusion" : "acid jazz" : Nil)
-    }
-  ]
 
 index :: ReactClass {musicians :: Array Musician}
 index = createClass $ (spec unit renderFn) { displayName = "Index" }
@@ -196,14 +178,16 @@ musician = createClass $ (spec unit renderFn)
       case mm of
         Nothing -> pure $ D.main' []
         Just (Musician m) ->
-          pure $ D.main'
-            [ D.h1' [ D.text m.name ]
-            , D.p'
-              [ D.text m.description
-              , D.a [ P.href m.wiki ] [ D.text "Read more on WikiPedia." ]
+          let wikiHref = S.trim m.wiki
+              wikiElem = if S.null wikiHref
+                           then []
+                           else [ D.a [ P.href wikiHref ] [ D.text "Read more on WikiPedia." ] ]
+          in do
+            pure $ D.main'
+              [ D.h1' [ D.text m.name ]
+              , D.p' ([ D.text m.description ] <> wikiElem)
+              , D.div' [ D.text $ intercalate ", " m.generes ]
               ]
-            , D.div' [ D.text $ intercalate ", " m.generes ]
-            ]
 
 router :: Router RouteProps Locations
 router =
@@ -224,7 +208,7 @@ main = do
     jsonStr <- findElmById (ElementId "redox-state") >>= textContent <<< elementToNode
     let estate = parse jsonStr
     logParseErr estate
-    st <- mkStore (either (const []) id estate)
+    st <- mkStore (either (const initialState) id estate)
     let cls = withStore st dispatch browserRouterClass
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
