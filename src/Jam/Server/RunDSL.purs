@@ -2,7 +2,7 @@ module Jam.Server.RunDSL where
 
 import Prelude
 import Data.Array as A
-import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (Eff)
 import Data.Array (foldMap)
 import Data.Newtype (ala, un)
 import Data.Ord.Max (Max(..))
@@ -18,11 +18,11 @@ addMusician
   :: forall eff
    . Array Musician
   -> NewMusician
-  -> Aff eff {newMusician :: Musician, newState :: (Array Musician)}
+  -> Eff eff {newMusician :: Musician, newState :: (Array Musician)}
 addMusician st m =
   let max = ala Max foldMap (_.id <<< un Musician <$> st)
       newMusician = Musician { id: (max + 1), name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
   in pure $ { newMusician, newState: (A.snoc st newMusician) }
 
-removeMusician :: forall eff. Array Musician -> Musician -> Aff eff (Array Musician)
+removeMusician :: forall eff. Array Musician -> Musician -> Eff eff (Array Musician)
 removeMusician st (Musician {id: mId}) = pure $ A.filter (\(Musician m) -> m.id /= mId) st

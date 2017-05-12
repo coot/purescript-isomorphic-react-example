@@ -78,21 +78,21 @@ handleApiRequest store =
                   writeStatus statusOK
                   :*> contentType applicationJSON
                   :*> closeHeaders
-                  :*> liftAff do
-                        state <- liftEff $ getState store
+                  :*> liftEff do
+                        state <- getState store
                         { newMusician, newState } <- addMusician state m
-                        _ <- liftEff $ setState store newState
+                        _ <- setState store newState
                         pure newMusician
-                  :>>= (respond <<< stringify <<< encodeJson <<< ApiMusician)
-                Right (RemoveMusician mId _) ->
+                  :>>= (respond <<< stringify <<< encodeJson <<< ApiAddMusician)
+                Right (RemoveMusician m _) ->
                   writeStatus statusBadRequest
                   :*> contentType applicationJSON
                   :*> closeHeaders
-                  :*> liftAff do
-                        state <- liftEff $ getState store
-                        newState <- removeMusician state mId
+                  :*> liftEff do
+                        state <- getState store
+                        newState <- removeMusician state m
                         liftEff $ setState store newState
-                  :*> respond (stringify $ encodeJson ApiOK)
+                  :*> respond (stringify $ encodeJson ApiRemoveMusician)
                 Left err ->
                   writeStatus statusBadRequest
                   :*> contentType applicationJSON
