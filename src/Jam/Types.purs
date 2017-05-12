@@ -1,10 +1,12 @@
 module Jam.Types where
 
 import Control.Alt ((<|>))
+import Control.Monad.Except (throwError)
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (.?), (:=), (~>))
+import Data.Either (Either)
 import Data.List (List(..), toUnfoldable, fromFoldable, (:))
 import Data.Newtype (class Newtype)
-import Prelude (class Show, bind, pure, show, ($), (<>), (>>=))
+import Prelude (class Show, bind, pure, show, ($), (<>), (==), (>>=))
 
 newtype Musician = Musician
   { id :: Int
@@ -66,37 +68,48 @@ initialState =
 
 data ApiResponse
   = ApiError String
-  | ApiMusician Musician
-  | ApiOK
+  | ApiAddMusician Musician
+  | ApiRemoveMusician
 
 instance showApiResponse :: Show ApiResponse where
   show (ApiError err) = "ApiError " <> err
-  show (ApiMusician m) = "ApiMusician " <> show m
-  show (ApiOK) = "ApiOK"
+  show (ApiAddMusician m) = "ApiAddMusician " <> show m
+  show (ApiRemoveMusician) = "RemoveMusician"
 
 instance encodeJson :: EncodeJson ApiResponse where
   encodeJson (ApiError err) =
        "status" := "error"
     ~> "error" := err
     ~> jsonEmptyObject
-  encodeJson ApiOK =
+  encodeJson (ApiAddMusician m) =
        "status" := "ok"
-    ~> jsonEmptyObject
-  encodeJson (ApiMusician m) =
-       "status" := "ok"
+    ~> "type" := "ApiAddMusician"
     ~> "musician" :=  (encodeJson m)
+    ~> jsonEmptyObject
+  encodeJson (ApiRemoveMusician) =
+       "status" := "ok"
+    ~> "type" := "ApiRemoveMusician"
     ~> jsonEmptyObject
 
 instance decodeJson :: DecodeJson ApiResponse where
   decodeJson json = (decodeJson json) >>= decode
     where
       decode obj =
-        decodeApiMusician obj <|> decodeApiError obj <|> decodeApiOK
-      decodeApiMusician obj = do
+        decodeApiAddMusician obj <|> decodeApiError obj <|> decodeApiRemoveMusician obj
+
+      decodeApiAddMusician obj = do
         mr <- obj .? "musician"
-        m <- decodeJson mr
-        pure (ApiMusician m)
+        _type <- (obj .? "type") :: Either String String
+        if _type == "ApiAddMusician"
+          then do
+            m <- decodeJson mr
+            pure (ApiAddMusician m)
+          else throwError $ "expected ApiAddMusician type instead of: " <> _type
+      decodeApiRemoveMusician obj = do
+        _type <- (obj .? "type") :: Either String String
+        if _type == "ApiRemoveMusician"
+          then pure (ApiRemoveMusician)
+          else throwError $ "expected ApiRemoveMusician type instead of: " <> _type
       decodeApiError obj = do
         err <- obj .? "error"
         pure (ApiError err)
-      decodeApiOK = pure ApiOK

@@ -3,13 +3,13 @@ module Jam.Actions where
 import Prelude
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Free (Free, liftF)
-import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (~>), (.?))
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (:=), (~>), (.?))
 import Data.List (fromFoldable, toUnfoldable)
 import Jam.Types (Musician, NewMusician)
 
 data MusCmd a
   = AddMusician NewMusician a
-  | RemoveMusician Int a
+  | RemoveMusician Musician a
 
 derive instance functorCommand :: Functor MusCmd
 
@@ -24,9 +24,9 @@ instance encodeJsonMusCmd :: EncodeJson (MusCmd a) where
         ~> jsonEmptyObject
     )
     ~> jsonEmptyObject
-  encodeJson (RemoveMusician _id _)
+  encodeJson (RemoveMusician m _)
      = "type" := "RemoveMusician"
-    ~> "id" := _id
+    ~> "musician" := (encodeJson m)
     ~> jsonEmptyObject
 
 instance decodeJsonMusCmd :: DecodeJson (MusCmd (Array Musician -> Array Musician)) where
@@ -57,5 +57,5 @@ type MusDSL a = Free MusCmd a
 addMusician :: NewMusician -> MusDSL (Array Musician -> Array Musician)
 addMusician m = liftF $ AddMusician m id
 
-removeMusician :: Int -> MusDSL (Array Musician -> Array Musician)
-removeMusician mId = liftF $ RemoveMusician mId id
+removeMusician :: Musician -> MusDSL (Array Musician -> Array Musician)
+removeMusician m = liftF $ RemoveMusician m id

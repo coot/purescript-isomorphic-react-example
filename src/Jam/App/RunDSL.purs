@@ -21,7 +21,7 @@ import Redox.Free (Interp)
 
 newtype RunApp eff a = RunApp
   { addMusician :: NewMusician -> Aff eff a
-  , removeMusician :: Int -> Aff eff a
+  , removeMusician :: Musician -> Aff eff a
   }
 
 derive instance functorRunApp :: Functor (RunApp eff)
@@ -35,6 +35,18 @@ mkAppInterp
   -> AppInterp (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)
 mkAppInterp store state = unfoldCofree id next state
   where
+
+    runSubscriptions = do
+      subs <- getSubs store
+      sta <- getState store
+      sequence_ ((_ $ sta) <$> subs)
+
+    addM :: Musician -> Array Musician -> Array Musician
+    addM m = flip A.snoc m
+
+    removeM :: Int -> Array Musician -> Array Musician
+    removeM mId = A.filter (\(Musician m_) -> m_.id /= mId)
+
     addMusician
       :: Array Musician
       -> NewMusician
@@ -53,29 +65,25 @@ mkAppInterp store state = unfoldCofree id next state
                   then A.snoc acu (Musician r { id = newId })
                   else A.snoc acu m_
 
-          removeM :: Array Musician -> Array Musician
-          removeM = A.filter (\(Musician m_) -> m_.id /= mId)
+          onError err = do
+            error $ show err
+            _ <- pure $ removeM mId <$> store
+            runSubscriptions
 
-          runSubscription = do
-            subs <- getSubs store
-            sta <- getState store
-            sequence_ ((_ $ sta) <$> subs)
-
-          onError = const $ pure unit
-          onSuccess resp =
-            case decodeJson resp.response of
-              Right (r@ApiMusician (Musician m_)) -> do
+          onSuccess { response } =
+            case decodeJson response of
+              Right (r@ApiAddMusician (Musician m_)) -> do
                 log $ "api resp: " <> show r
                 _ <- pure $ updateMId mId m_.id <$> store
-                runSubscription
+                runSubscriptions
               Right r -> do
                 log $ "api resp: " <> show r
-                _ <- pure $ removeM <$> store
-                runSubscription
+                _ <- pure $ removeM mId <$> store
+                runSubscriptions
               Left err -> do
                 error $ show ("Error parsing response: " <> err)
-                _ <- pure $ removeM <$> store
-                runSubscription
+                _ <- pure $ removeM mId <$> store
+                runSubscriptions
 
           apiRequest :: Affjax (console :: CONSOLE, redox :: REDOX | eff) Json
           apiRequest = post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician)))
@@ -84,13 +92,31 @@ mkAppInterp store state = unfoldCofree id next state
         _ <- liftEff $ runAff onError onSuccess apiRequest
         pure $ A.snoc st mus
 
-    removeMusician :: Array Musician -> Int -> Aff (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)
-    removeMusician st mId =
+    removeMusician :: Array Musician -> Musician -> Aff (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)
+    removeMusician st m@(Musician {id: mId}) =
       let
         apiRequest :: Affjax (console :: CONSOLE, redox :: REDOX | eff) Json
-        apiRequest = post "/api" (encodeJson $ (RemoveMusician mId id :: MusCmd (Array Musician -> Array Musician)))
+        apiRequest = post "/api" (encodeJson $ (RemoveMusician m id :: MusCmd (Array Musician -> Array Musician)))
+
+        onError m err = do
+          error $ show err
+          _ <- pure $ addM m <$> store
+          runSubscriptions
+
+        onSuccess m { response } = 
+          case decodeJson response of
+            Right (r@ApiAddMusician (Musician m_)) -> do
+              log $ "api resp: " <> show r
+              _ <- pure $ addM m <$> store
+              runSubscriptions
+            Right r -> do
+              log $ "api resp: " <> show r
+            Left err -> do
+              error $ show ("Error parsing response: " <> err)
+              _ <- pure $ removeM mId <$> store
+              runSubscriptions
       in do
-        _ <- liftEff $ runAff (const $ pure unit) (const $ pure unit) apiRequest
+        _ <- liftEff $ runAff (onError m) (onSuccess m) apiRequest
         pure $ A.filter (\(Musician m_) -> m_.id /= mId) st
 
     next :: Array Musician -> RunApp (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)

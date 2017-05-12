@@ -24,5 +24,5 @@ addMusician st m =
       newMusician = Musician { id: (max + 1), name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
   in pure $ { newMusician, newState: (A.snoc st newMusician) }
 
-removeMusician :: forall eff. Array Musician -> Int -> Aff eff (Array Musician)
-removeMusician st mId = pure $ A.filter (\(Musician m) -> m.id /= mId) st
+removeMusician :: forall eff. Array Musician -> Musician -> Aff eff (Array Musician)
+removeMusician st (Musician {id: mId}) = pure $ A.filter (\(Musician m) -> m.id /= mId) st
