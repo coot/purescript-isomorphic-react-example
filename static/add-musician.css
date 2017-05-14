@@ -1,0 +1,8 @@
+.label {
+  display: block;
+}
+
+.label-name {
+  margin-right: 5px;
+  font-variant-caps: all-small-caps;
+}

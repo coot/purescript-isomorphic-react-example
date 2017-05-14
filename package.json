@@ -7,15 +7,19 @@
     "test": "test"
   },
   "dependencies": {
+    "css-modules-require-hook": "^4.0.6",
     "mime": "^1.3.6",
     "mkdirp": "^0.5.1",
     "react": "^15.5.4",
     "react-dom": "^15.5.4"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "css-modulesify": "^0.27.2",
+    "react-css-modules": "^4.0.5"
+  },
   "scripts": {
     "afterinstall": "bower install",
-    "build": "mkdirp 'dist/static'; pulp browserify -O -m Jam.App -t dist/static/index.js",
+    "build": "mkdirp 'dist/static'; mkdirp 'output/css'; pulp build -m Jam.App; browserify -p [css-modulesify -o dist/static/style.css] -o dist/static/index.js output/Jam.App/index.js",
     "start": "pulp run -m Jam.Server",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -5,13 +5,13 @@ import Data.String as S
 import Control.IxMonad ((:*>), (:>>=))
 import Control.Monad.Aff (Aff, nonCanceler)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser)
 import Data.Argonaut.Core (stringify)
 import Data.Either (Either(..))
+import Data.Foreign (Foreign)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (maybe)
 import Data.MediaType.Common (textHTML, applicationJSON)
@@ -37,6 +37,9 @@ import React.Router (RouteProps, runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
 import Redox (REDOX, Store, getState, mkStore, setState)
+
+-- we just need to ffi module so the css-modules-require-hook is included
+foreign import hook :: Foreign
 
 type ServerAffM e = Aff
   ( http :: HTTP
@@ -150,6 +153,7 @@ handleAppRequest store url =
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Purescript Isomorphic React App</title>
+        <link href="/static/style.css" rel="stylesheet" />
         <script id="redox-state" type="application/json">""" <> (stringify $ encodeJson state) <> """</script>
         <script defer src="/static/index.js"></script>
       </head>

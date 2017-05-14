@@ -3,6 +3,7 @@ module Jam.App where
 import Prelude
 import Data.Array as A
 import Data.List as L
+import Data.StrMap (StrMap, lookup)
 import React.DOM as D
 import React.DOM.Props as P
 import Control.Monad.Eff (Eff)
@@ -38,6 +39,11 @@ import Redox (REDOX, mkStore)
 import Redox (dispatch) as Redox
 import Routing.Match.Class (int, lit)
 import Unsafe.Coerce (unsafeCoerce)
+
+foreign import addMusicianCss :: StrMap String
+
+unsafeLookup :: String -> StrMap String -> String
+unsafeLookup n = unsafePartial fromJust <<< lookup n
 
 data Locations
   = HomeRoute
@@ -124,19 +130,19 @@ addMusicianSpec = (spec init renderFn) { displayName = "AddMusician" }
     renderFn this = do
       state <- readState this
       pure $ D.form [ P._id "add-musician", P.onSubmit (submitFn this) ]
-        [ D.label'
+        [ D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
           [ D.text "name"
           , D.input [ P._type "text", P.value state.name, P.onChange (updateHandler this nameL) ] []
           ]
-        , D.label'
+        , D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
           [ D.text "description"
           , D.textarea [ P.value state.description, P.onChange (updateHandler this descL) ] []
           ]
-        , D.label'
+        , D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
           [ D.text "WikiPedia link"
           , D.input [ P._type "text", P.value state.wiki, P.onChange (updateHandler this wikiL) ] []
           ]
-        , D.label'
+        , D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
           [ D.text "geners"
           , D.input [ P._type "text", P.value (view geneL state), P.onChange (updateHandler this geneL) ] []
           ]

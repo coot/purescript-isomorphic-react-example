@@ -1,5 +1,4 @@
 "use strict"
-
 exports.readRedoxState_ = function(Just) {
   return function(Nothing) {
     return function(window) {
@@ -12,3 +11,5 @@ exports.readRedoxState_ = function(Just) {
     }
   }
 }
+
+exports.addMusicianCss = require("../../static/add-musician.css")
