@@ -28,10 +28,11 @@
     "watchify": "^3.9.0"
   },
   "scripts": {
-    "afterinstall": "bower install",
+    "postinstall": "bower install",
     "buildComment": "echo 'client build builds inside `.build/Jam.App/`, so that we can use relative imports in both client and server.'",
     "build": "mkdirp 'dist/static'; mkdirp '.build/Jam.App'; pulp build -m Jam.App -t .build/Jam.App/bundle.js; browserify -p [css-modulesify -o dist/static/style.css --after 'postcss-import' --after postcss-url --after postcss-assets --after postcss-custom-media --after postcss-cssnext --after postcss-nested --after postcss-will-change ] -o dist/static/index.js .build/Jam.App/bundle.js",
-    "start": "pulp run -m Jam.Server",
+    "prestart": "mkdirp '.build/Jam.Server'; pulp build -m Jam.Server -t .build/Jam.Server/server.js",
+    "start": "node start.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

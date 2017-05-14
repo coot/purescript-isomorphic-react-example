@@ -7,7 +7,7 @@ import Control.Monad.Aff (Aff, nonCanceler)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Console (CONSOLE, log)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser)
 import Data.Argonaut.Core (stringify)
 import Data.Either (Either(..))
@@ -23,8 +23,8 @@ import Hyper.Response (ResponseEnded, StatusLineOpen, closeHeaders, contentType,
 import Hyper.Status (statusBadRequest, statusNotFound, statusOK)
 import Jam.Actions (MusCmd(..))
 import Jam.App (Locations, router)
-import Jam.Server.RunDSL (addMusician, removeMusician)
 import Jam.Server.FileServer (fileServer)
+import Jam.Server.RunDSL (addMusician, removeMusician)
 import Jam.Types (Musician, initialState, ApiResponse(..))
 import Node.Buffer (BUFFER)
 import Node.Encoding (Encoding(UTF8))
@@ -37,9 +37,6 @@ import React.Router (RouteProps, runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
 import Redox (REDOX, Store, getState, mkStore, setState)
-
--- we just need to ffi module so the css-modules-require-hook is included
-foreign import hook :: Foreign
 
 type ServerAffM e = Aff
   ( http :: HTTP
@@ -205,5 +202,6 @@ app store =
 
 main :: forall e. Eff (console :: CONSOLE, http :: HTTP, fs :: FS, buffer :: BUFFER, avar :: AVAR, redox :: REDOX | e) Unit
 main = do
+  log "starting..."
   store <- mkStore initialState
   runServer defaultOptionsWithLogging {} (app store)
