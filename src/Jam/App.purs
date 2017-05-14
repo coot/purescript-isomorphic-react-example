@@ -3,11 +3,11 @@ module Jam.App where
 import Prelude
 import Data.Array as A
 import Data.List as L
-import Data.StrMap (StrMap, lookup)
 import React.DOM as D
 import React.DOM.Props as P
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Console (CONSOLE, log, warn)
+import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import DOM (DOM)
 import DOM.HTML (window)
 import DOM.HTML.Types (Window, htmlDocumentToDocument)
@@ -21,8 +21,9 @@ import Data.Foldable (intercalate)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
 import Data.List (List(..))
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..), fromJust, maybe')
 import Data.Newtype (class Newtype, unwrap)
+import Data.StrMap (StrMap, lookup)
 import Data.String (Pattern(..), split, trim, null) as S
 import Jam.Actions (addMusician)
 import Jam.App.RunDSL (mkInterpret)
@@ -31,7 +32,7 @@ import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
 import React.Redox (connect, dispatch, withStore)
-import React.Router (Route(..), RouteProps, browserRouterClass, link', (:+))
+import React.Router (Route(..), RouteProps, browserRouterClass, link, link', (:+))
 import React.Router.Types (Router)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
@@ -40,10 +41,32 @@ import Redox (dispatch) as Redox
 import Routing.Match.Class (int, lit)
 import Unsafe.Coerce (unsafeCoerce)
 
-foreign import addMusicianCss :: StrMap String
+foreign import addMusicianCss ::
+  { form :: String
+  , label :: String
+  , labelName :: String
+  , addButton :: String
+  }
+
+foreign import homeCss ::
+  { home :: String
+  , musician :: String
+  , musicians :: String
+  }
+
+foreign import musicianCss ::
+  { title :: String
+  , description :: String
+  , generes :: String
+  , wikiLink :: String
+  }
 
 unsafeLookup :: String -> StrMap String -> String
-unsafeLookup n = unsafePartial fromJust <<< lookup n
+unsafeLookup n = maybe' (const err) id <<< lookup n
+  where
+    err = unsafePerformEff do
+      warn ("className lookup failed for '" <> n <> "'")
+      pure ""
 
 data Locations
   = HomeRoute
@@ -64,11 +87,11 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
   where
 
     showMusician :: Musician -> ReactElement
-    showMusician (Musician u) = D.li [ P.className "user" ] [ link' ("/user/" <> show u.id) [ D.text u.name ] ]
+    showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' ("/user/" <> show u.id) [ D.text u.name ] ]
 
     renderFn this = do
       mus <- getProps this >>= pure <<< _.musicians
-      pure $ D.div' (showMusician <$> mus)
+      pure $ D.ul [ P.className homeCss.musicians ] (showMusician <$> mus)
 
 homeRouteCls :: ReactClass (RouteProps Locations)
 homeRouteCls = createClass $  (spec unit renderFn)
@@ -81,7 +104,7 @@ homeRouteCls = createClass $  (spec unit renderFn)
     renderFn this = do
       chlds <- getChildren this
       pure $ D.main' $
-        [ link' "/" [ D.text "home" ]
+        [ link { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
         , createElement indexConn unit []
         , createElement addMusician unit []
         ]
@@ -129,24 +152,24 @@ addMusicianSpec = (spec init renderFn) { displayName = "AddMusician" }
 
     renderFn this = do
       state <- readState this
-      pure $ D.form [ P._id "add-musician", P.onSubmit (submitFn this) ]
-        [ D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
-          [ D.text "name"
+      pure $ D.form [ P._id "add-musician", P.className (addMusicianCss.form), P.onSubmit (submitFn this) ]
+        [ D.label [ P.className (addMusicianCss.label) ]
+          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "name" ]
           , D.input [ P._type "text", P.value state.name, P.onChange (updateHandler this nameL) ] []
           ]
-        , D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
-          [ D.text "description"
+        , D.label [ P.className (addMusicianCss.label) ]
+          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "description" ]
           , D.textarea [ P.value state.description, P.onChange (updateHandler this descL) ] []
           ]
-        , D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
-          [ D.text "WikiPedia link"
+        , D.label [ P.className (addMusicianCss.label) ]
+          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "WikiPedia link" ]
           , D.input [ P._type "text", P.value state.wiki, P.onChange (updateHandler this wikiL) ] []
           ]
-        , D.label [ P.className (unsafeLookup "label" addMusicianCss) ]
-          [ D.text "geners"
+        , D.label [ P.className (addMusicianCss.label) ]
+          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "geners" ]
           , D.input [ P._type "text", P.value (view geneL state), P.onChange (updateHandler this geneL) ] []
           ]
-        , D.button' [ D.text "add" ]
+        , D.button [ P.className addMusicianCss.addButton ] [ D.text "add musician" ]
         ]
 
 
@@ -187,12 +210,12 @@ musician = createClass $ (spec unit renderFn)
           let wikiHref = S.trim m.wiki
               wikiElem = if S.null wikiHref
                            then []
-                           else [ D.a [ P.href wikiHref ] [ D.text "Read more on WikiPedia." ] ]
+                           else [ D.a [ P.href wikiHref, P.className musicianCss.wikiLink ] [ D.text "Read more on WikiPedia." ] ]
           in do
             pure $ D.main'
-              [ D.h1' [ D.text m.name ]
-              , D.p' ([ D.text m.description ] <> wikiElem)
-              , D.div' [ D.text $ intercalate ", " m.generes ]
+              [ D.h1 [ P.className musicianCss.title ] [ D.text m.name ]
+              , D.p [ P.className musicianCss.description ] ([ D.text m.description ] <> wikiElem)
+              , D.div [ P.className musicianCss.generes ] [ D.text $ intercalate ", " m.generes ]
               ]
 
 router :: Router RouteProps Locations

@@ -1,8 +1,51 @@
-.label {
-  display: block;
+.form {
+  padding: 10px 10px 10px 20px;
+  max-width: 350px;
+  box-sizing: border-box;
 }
 
-.label-name {
-  margin-right: 5px;
+.label {
+  display: block;
+  position: relative;
+  margin-bottom: 5px;
+
+  textarea,
+  input {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    vertical-align: top;
+    border: none;
+    border-bottom: 1px solid #aaa;
+    padding: 10px;
+    border-radius: 2px;
+
+    &:hover,
+    &:focus {
+      outline: none;
+      background-color: rgba(0,0,0,.05);
+    }
+  }
+}
+
+.labelName {
+  display: block;
+  margin-right: 10px;
   font-variant-caps: all-small-caps;
+  min-width: 100px;
+}
+
+.addButton {
+  background: none;
+  font-variant-caps: all-small-caps;
+  padding: 5px;
+  border: 1px solid gray;
+  border-radius: 2px;
+  float: right;
+
+  &:focus,
+  &:active,
+  &:hover {
+    background-color: rgba(0,0,0,.05);
+  }
 }

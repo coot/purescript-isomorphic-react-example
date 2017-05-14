@@ -1,0 +1,13 @@
+.home {
+  font-variant-caps: all-small-caps;
+}
+
+.musicians {
+  margin-top: 10px;
+  padding-start: 0;
+  -webkit-padding-start: 0;
+  list-style: none;
+
+  .musician {
+  }
+}

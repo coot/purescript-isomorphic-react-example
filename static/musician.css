@@ -1,0 +1,18 @@
+.title {
+  font-weight: lighter;
+}
+
+.description {
+  font-size: .9rem;
+  max-width: 500px;
+}
+
+.generes {
+  font-size: .9rem;
+  font-variant-caps: all-small-caps;
+}
+
+.wikiLink {
+  display: block;
+  margin-top: 10px;
+}

@@ -53,7 +53,7 @@ initialState =
   [ Musician
       { id: 1
       , name: "Pat Metheny"
-      , description: """Patrick Bruce "Pat" Metheny is an American jazz guitarist and composer."""
+      , description: """Patrick Bruce "Pat" Metheny is an American jazz guitarist and composer. He is the leader of the Pat Metheny Group and is also involved in duets, solo works and other side projects. His style incorporates elements of progressive and contemporary jazz, Latin jazz, and jazz fusion. Metheny has three gold albums and 20 Grammy Awards and is the only person to win Grammys in ten different categories. He is the brother of jazz flugelhornist and journalist Mike Metheny."""
       , wiki: "https://en.wikipedia.org/wiki/Pat_Metheny"
       , generes: ("Jazz" : "jazz fusion" : "Latin jazz" : "world" : "experimental" : "avant-gard" : Nil)
       }
