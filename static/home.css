@@ -7,7 +7,13 @@
   padding-start: 0;
   -webkit-padding-start: 0;
   list-style: none;
+}
 
-  .musician {
+.musician {
+  font-weight: lighter;
+  font-size: 1.1rem;
+
+  &:not(:last-child) {
+    margin-bottom: 3px;
   }
 }

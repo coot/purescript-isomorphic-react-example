@@ -1,4 +1,7 @@
+@value mainColor from "./style.css";
+
 .title {
+  color: mainColor;
   font-weight: lighter;
 }
 

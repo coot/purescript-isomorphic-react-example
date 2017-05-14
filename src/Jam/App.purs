@@ -61,6 +61,8 @@ foreign import musicianCss ::
   , wikiLink :: String
   }
 
+foreign import styleCss :: {}
+
 unsafeLookup :: String -> StrMap String -> String
 unsafeLookup n = maybe' (const err) id <<< lookup n
   where

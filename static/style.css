@@ -1,0 +1,6 @@
+@value mainColor: #db4d7d;
+
+:global a {
+  color: mainColor;
+  text-decoration: none;
+}
