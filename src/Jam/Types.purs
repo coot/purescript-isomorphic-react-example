@@ -16,17 +16,10 @@ newtype Musician = Musician
   , generes :: List String
   }
 
-type NewMusician =
-  { name :: String
-  , description :: String
-  , wiki :: String
-  , generes :: List String
-  }
-
-derive instance newtypeMusician :: Newtype Musician _
-
 instance showMusician :: Show Musician where
   show (Musician m) = "Musician { id: " <> show m.id <> ", name: " <> m.name <> ", description: " <> m.description <> ", wiki: " <> m.wiki <> ", generes: " <> show m.generes <> "}"
+
+derive instance newtypeMusician :: Newtype Musician _
 
 instance encodeJsonMusician :: EncodeJson Musician where
   encodeJson (Musician m)
@@ -47,6 +40,13 @@ instance decodeJsonMusician :: DecodeJson Musician where
     let generes = fromFoldable (generesA :: Array String)
     wiki <- obj .? "wiki"
     pure $ Musician { id, name, description, generes, wiki }
+
+type NewMusician =
+  { name :: String
+  , description :: String
+  , wiki :: String
+  , generes :: List String
+  }
 
 initialState :: Array Musician
 initialState =
