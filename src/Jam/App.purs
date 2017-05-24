@@ -36,7 +36,7 @@ import React.Router (Route(..), RouteProps, browserRouterClass, link, link', (:+
 import React.Router.Types (Router)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
-import Redox (REDOX, mkStore)
+import Redox (RedoxStore, ReadRedox, CreateRedox, SubscribeRedox, WriteRedox, mkStore)
 import Redox (dispatch) as Redox
 import Routing.Match.Class (int, lit)
 import Unsafe.Coerce (unsafeCoerce)
@@ -231,7 +231,7 @@ foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (foral
 readRedoxState :: forall eff. Window -> Eff (dom :: DOM | eff) (Maybe Json)
 readRedoxState = readRedoxState_ Just Nothing
 
-main :: forall eff. Eff (dom :: DOM, redox :: REDOX, console :: CONSOLE, ajax :: AJAX | eff) Unit
+main :: forall eff. Eff (dom :: DOM, redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox), console :: CONSOLE, ajax :: AJAX | eff) Unit
 main = do
     w <- window
     ms <- readRedoxState w

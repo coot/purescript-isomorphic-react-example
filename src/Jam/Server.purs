@@ -11,7 +11,6 @@ import Control.Monad.Eff.Console (CONSOLE, log)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser)
 import Data.Argonaut.Core (stringify)
 import Data.Either (Either(..))
-import Data.Foreign (Foreign)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (maybe)
 import Data.MediaType.Common (textHTML, applicationJSON)
@@ -36,12 +35,12 @@ import React.Redox (withStore)
 import React.Router (RouteProps, runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
-import Redox (REDOX, Store, getState, mkStore, setState)
+import Redox (RedoxStore, ReadRedox, WriteRedox, SubscribeRedox, CreateRedox, Store, getState, mkStore, setState)
 
 type ServerAffM e = Aff
   ( http :: HTTP
   , console :: CONSOLE
-  , redox :: REDOX
+  , redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox)
   , avar :: AVAR
   , buffer :: BUFFER
   , fs :: FS
@@ -200,7 +199,7 @@ app store =
         -> handleApiRequest store
       url -> handleAppRequest store url
 
-main :: forall e. Eff (console :: CONSOLE, http :: HTTP, fs :: FS, buffer :: BUFFER, avar :: AVAR, redox :: REDOX | e) Unit
+main :: forall e. Eff (console :: CONSOLE, http :: HTTP, fs :: FS, buffer :: BUFFER, avar :: AVAR, redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox) | e) Unit
 main = do
   log "starting..."
   store <- mkStore initialState
