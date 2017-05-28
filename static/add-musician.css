@@ -42,10 +42,11 @@
   border: 1px solid gray;
   border-radius: 2px;
   float: right;
+  transition: background-color .2s linear;
 
   &:focus,
   &:active,
   &:hover {
-    background-color: rgba(0,0,0,.05);
+    background-color: rgba(0,0,0,.1);
   }
 }

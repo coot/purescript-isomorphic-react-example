@@ -25,14 +25,14 @@ import Data.Maybe (Maybe(..), fromJust, maybe')
 import Data.Newtype (class Newtype, unwrap)
 import Data.StrMap (StrMap, lookup)
 import Data.String (Pattern(..), split, trim, null) as S
-import Jam.Actions (addMusician)
+import Jam.Actions (addMusician, removeMusician)
 import Jam.App.RunDSL (mkInterpret)
 import Jam.Types (Musician(..), NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
 import React.Redox (connect, dispatch, withStore)
-import React.Router (Route(..), RouteProps, browserRouterClass, link, link', (:+))
+import React.Router (Route(..), RouteProps, browserRouterClass, goTo, link, link', (:+))
 import React.Router.Types (Router)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
@@ -59,6 +59,8 @@ foreign import musicianCss ::
   , description :: String
   , generes :: String
   , wikiLink :: String
+  , remove :: String
+  , container :: String
   }
 
 foreign import styleCss :: {}
@@ -197,15 +199,23 @@ musicianRouteCls = createClass $ (spec unit renderFn)
       pure $ createElement musicianConn { mId } []
 
 musician :: ReactClass { musician :: Maybe Musician }
-musician = createClass $ (spec unit renderFn)
+musician = accessContext $ createClass $ (spec unit renderFn)
     { displayName = "Musician" }
   where
 
     unsafeMusicianId :: Partial => Locations -> Int
     unsafeMusicianId l = case l of MusicianRoute id_ -> id_
 
+    removeHandler this ev = do
+      { musician: mm } <- getProps this
+      case mm of
+        Just m -> do
+          void $ dispatch this $ removeMusician m
+          goTo (show HomeRoute)
+        Nothing -> pure unit
+
     renderFn this = do
-      mm <- _.musician <$> getProps this
+      { musician: mm } <- getProps this
       case mm of
         Nothing -> pure $ D.main' []
         Just (Musician m) ->
@@ -214,8 +224,9 @@ musician = createClass $ (spec unit renderFn)
                            then []
                            else [ D.a [ P.href wikiHref, P.className musicianCss.wikiLink ] [ D.text "Read more on WikiPedia." ] ]
           in do
-            pure $ D.main'
+            pure $ D.main [ P.className musicianCss.container ]
               [ D.h1 [ P.className musicianCss.title ] [ D.text m.name ]
+              , D.button [ P.className musicianCss.remove, P.onClick $ removeHandler this ] [ D.text "ㄨ" ]
               , D.p [ P.className musicianCss.description ] ([ D.text m.description ] <> wikiElem)
               , D.div [ P.className musicianCss.generes ] [ D.text $ intercalate ", " m.generes ]
               ]
@@ -231,7 +242,9 @@ foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (foral
 readRedoxState :: forall eff. Window -> Eff (dom :: DOM | eff) (Maybe Json)
 readRedoxState = readRedoxState_ Just Nothing
 
-main :: forall eff. Eff (dom :: DOM, redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox), console :: CONSOLE, ajax :: AJAX | eff) Unit
+main :: forall eff. Eff
+  (dom :: DOM, redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox), console :: CONSOLE, ajax :: AJAX | eff)
+  Unit
 main = do
     w <- window
     ms <- readRedoxState w
