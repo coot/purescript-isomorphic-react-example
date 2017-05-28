@@ -8,7 +8,8 @@ import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Data.Argonaut (decodeJson, encodeJson, jsonParser)
+import Control.Monad.Eff.Unsafe (unsafePerformEff)
+import Data.Argonaut (Json, decodeJson, encodeJson, jsonParser, (.?))
 import Data.Argonaut.Core (stringify)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
@@ -36,6 +37,7 @@ import React.Router (RouteProps, runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
 import Redox (RedoxStore, ReadRedox, WriteRedox, SubscribeRedox, CreateRedox, Store, getState, mkStore, setState)
+import Unsafe.Coerce (unsafeCoerce)
 
 type ServerAffM e = Aff
   ( http :: HTTP
@@ -66,6 +68,7 @@ handleApiRequest store =
     decode body = do
       json <- jsonParser body
       decodeJson json
+
   in
     getRequestData
     :>>= _.method >>>
@@ -84,7 +87,7 @@ handleApiRequest store =
                         pure newMusician
                   :>>= (respond <<< stringify <<< encodeJson <<< ApiAddMusician)
                 Right (RemoveMusician m _) ->
-                  writeStatus statusBadRequest
+                  writeStatus statusOK
                   :*> contentType applicationJSON
                   :*> closeHeaders
                   :*> liftEff do
