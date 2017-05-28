@@ -98,12 +98,12 @@ mkAppInterp store state = unfoldCofree id next state
         apiRequest :: Affjax (console :: CONSOLE, redox :: REDOX | eff) Json
         apiRequest = post "/api" (encodeJson $ (RemoveMusician m id :: MusCmd (Array Musician -> Array Musician)))
 
-        onError m err = do
+        onError err = do
           error $ show err
           _ <- pure $ addM m <$> store
           runSubscriptions
 
-        onSuccess m { response } = 
+        onSuccess { response } = 
           case decodeJson response of
             Right (r@ApiAddMusician (Musician m_)) -> do
               log $ "api resp: " <> show r
@@ -116,7 +116,7 @@ mkAppInterp store state = unfoldCofree id next state
               _ <- pure $ removeM mId <$> store
               runSubscriptions
       in do
-        _ <- liftEff $ runAff (onError m) (onSuccess m) apiRequest
+        _ <- liftEff $ runAff onError onSuccess apiRequest
         pure $ A.filter (\(Musician m_) -> m_.id /= mId) st
 
     next :: Array Musician -> RunApp (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff) (Array Musician)

@@ -1,9 +1,12 @@
 module Jam.Actions where
 
 import Prelude
-import Control.Monad.Error.Class (throwError)
+import Control.Monad.Eff.Console (log)
+import Control.Monad.Eff.Unsafe (unsafePerformEff)
+import Control.Monad.Error.Class (catchError, throwError)
 import Control.Monad.Free (Free, liftF)
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (:=), (~>), (.?))
+import Data.Either (Either)
 import Data.List (fromFoldable, toUnfoldable)
 import Jam.Types (Musician(..), NewMusician)
 
@@ -34,7 +37,7 @@ instance decodeJsonMusCmd :: DecodeJson (MusCmd (Array Musician -> Array Musicia
     obj <- decodeJson json
     _type <- obj .? "type"
     case _type of
-      "AddMusician" -> do
+      "AddMusician" -> flip catchError (handleErr "AddMusician json/parsing error: ") do
         m <- obj .? "newMusician"
         name <- m .? "name"
         description <- m .? "description"
@@ -42,7 +45,7 @@ instance decodeJsonMusCmd :: DecodeJson (MusCmd (Array Musician -> Array Musicia
         generesA <- m .? "generes"
         let generes = fromFoldable (generesA :: Array String)
         pure $ AddMusician {name, description, wiki, generes} id
-      "RemoveMusician" -> do
+      "RemoveMusician" -> flip catchError (handleErr "RemoveMusician json/parsing error: ") do
         m <- obj .? "musician"
         _id <- m .? "id"
         name <- m .? "name"
@@ -52,6 +55,11 @@ instance decodeJsonMusCmd :: DecodeJson (MusCmd (Array Musician -> Array Musicia
         let generes = fromFoldable (generesA :: Array String)
         pure $ RemoveMusician (Musician {id: _id, name, description, wiki, generes}) id
       _ -> throwError "no such type"
+    where
+      handleErr title err = unsafePerformEff do
+        let e = title <> err
+        log e
+        pure $ throwError e
 
 -- | On the client side we interpret this monad. But since it is not
 -- | serializable we rather serialize and send to the backend the unlifted
