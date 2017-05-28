@@ -27,7 +27,7 @@ import Data.StrMap (StrMap, lookup)
 import Data.String (Pattern(..), split, trim, null) as S
 import Jam.Actions (addMusician, removeMusician)
 import Jam.App.RunDSL (mkInterpret)
-import Jam.Types (Musician(..), NewMusician, initialState)
+import Jam.Types (Musician(..), Locations(..), NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
@@ -71,16 +71,6 @@ unsafeLookup n = maybe' (const err) id <<< lookup n
     err = unsafePerformEff do
       warn ("className lookup failed for '" <> n <> "'")
       pure ""
-
-data Locations
-  = HomeRoute
-  | MusicianRoute Int
-
-derive instance eqLocations :: Eq Locations
-
-instance showLocations :: Show Locations where
-  show HomeRoute = "/"
-  show (MusicianRoute uid) = "/user/" <> show uid
 
 newtype Store = Store (Array Musician)
 

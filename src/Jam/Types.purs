@@ -6,7 +6,17 @@ import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson
 import Data.Either (Either)
 import Data.List (List(..), toUnfoldable, fromFoldable, (:))
 import Data.Newtype (class Newtype)
-import Prelude (class Show, bind, pure, show, ($), (<>), (==), (>>=))
+import Prelude (class Eq, class Show, bind, pure, show, ($), (<>), (==), (>>=))
+
+data Locations
+  = HomeRoute
+  | MusicianRoute Int
+
+derive instance eqLocations :: Eq Locations
+
+instance showLocations :: Show Locations where
+  show HomeRoute = "/"
+  show (MusicianRoute uid) = "/user/" <> show uid
 
 newtype Musician = Musician
   { id :: Int
