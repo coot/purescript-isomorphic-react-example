@@ -14,11 +14,14 @@
     "purescript-hyper": "^0.7.3",
     "purescript-redox": "git://github.com/coot/purescript-redox#effects",
     "purescript-react-redox": "git://github.com/coot/purescript-react-redox#effects",
+    "purescript-react-transition-group": "^0.1.0",
     "purescript-free": "^4.0.0",
     "purescript-argonaut": "^3.0.0",
     "purescript-orders": "^3.0.0",
     "purescript-affjax": "^4.0.0",
-    "purescript-now": "^3.0.0"
+    "purescript-now": "^3.0.0",
+    "purescript-js-timers": "^3.0.0",
+    "purescript-debug": "^3.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0"

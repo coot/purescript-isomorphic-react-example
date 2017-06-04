@@ -7,6 +7,7 @@ import React.DOM as D
 import React.DOM.Props as P
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, warn)
+import Control.Monad.Eff.Timer (TIMER)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import DOM (DOM)
 import DOM.HTML (window)
@@ -21,18 +22,20 @@ import Data.Foldable (intercalate)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
 import Data.List (List(..))
-import Data.Maybe (Maybe(..), fromJust, maybe')
-import Data.Newtype (class Newtype, unwrap)
+import Data.Maybe (Maybe(..), fromJust, maybe, maybe')
+import Data.Newtype (class Newtype, un, unwrap)
 import Data.StrMap (StrMap, lookup)
 import Data.String (Pattern(..), split, trim, null) as S
 import Jam.Actions (addMusician, removeMusician)
 import Jam.App.RunDSL (mkInterpret)
-import Jam.Types (Musician(..), Locations(..), NewMusician, initialState)
+import Jam.Types (Locations(MusicianRoute, HomeRoute), Musician(Musician), MusicianRouteProps, NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
-import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactState, ReactThis, ReadWrite, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import React.DOM.Props (unsafeFromPropsArray)
+import React.ReactTranstionGroup (createCSSTransitionGroupElement, defaultCSSTransitionGroupProps, tagNameToComponent)
 import React.Redox (connect, dispatch, withStore)
-import React.Router (Route(..), RouteProps, browserRouterClass, goTo, link, link', (:+))
+import React.Router (Route(Route), browserRouterClass, goTo, link, link', (:+))
 import React.Router.Types (Router)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
@@ -63,6 +66,15 @@ foreign import musicianCss ::
   , container :: String
   }
 
+foreign import musicianTransitionCss ::
+  { enter :: String
+  , enterActive :: String
+  , leave :: String
+  , leaveActive :: String
+  , appear :: String
+  , appearActive :: String
+  }
+
 foreign import styleCss :: {}
 
 unsafeLookup :: String -> StrMap String -> String
@@ -88,7 +100,7 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
       pure $ D.ul [ P.className homeCss.musicians ] (showMusician <$> mus)
 
 homeRouteCls :: ReactClass (MusicianRouteProps Locations)
-homeRouteCls = createClass $  (spec unit renderFn)
+homeRouteCls = createClass $ (spec unit renderFn)
     { displayName = "HomeRouteCls" }
   where
     indexConn = connect (to id) (\_ musicians _ -> { musicians }) index
@@ -101,11 +113,20 @@ homeRouteCls = createClass $  (spec unit renderFn)
         [ link { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
         , createElement indexConn unit []
         , createElement addMusician unit []
+        , createCSSTransitionGroupElement
+            (defaultCSSTransitionGroupProps
+              { component = tagNameToComponent "div"
+              , transitionName = musicianTransitionCss
+              , transitionEnterTimeout = 300
+              , transitionLeaveTimeout = 300
+              })
+            (unsafeFromPropsArray [])
+            chlds
         ]
-        <> chlds
 
-addMusicianSpec :: forall eff. ReactSpec Unit NewMusician  eff
-addMusicianSpec = (spec init renderFn) { displayName = "AddMusician" }
+addMusicianSpec :: forall eff. ReactSpec Unit NewMusician (timer :: TIMER | eff)
+addMusicianSpec = (spec init renderFn)
+    { displayName = "AddMusician" }
   where
     init = { name: "", description: "", wiki: "", generes: Nil }
 
@@ -213,7 +234,7 @@ musician = accessContext $ createClass $ (spec unit renderFn)
                            then []
                            else [ D.a [ P.href wikiHref, P.className musicianCss.wikiLink ] [ D.text "Read more on WikiPedia." ] ]
           in do
-            pure $ D.main [ P.className musicianCss.container ]
+            pure $ D.main [ P.key ("musician-" <> (maybe "" (show <<< _.id <<< un Musician) mm)), P.className musicianCss.container ]
               [ D.h1 [ P.className musicianCss.title ] [ D.text m.name ]
               , D.button [ P.className musicianCss.remove, P.onClick $ removeHandler this ] [ D.text "ㄨ" ]
               , D.p [ P.className musicianCss.description ] ([ D.text m.description ] <> wikiElem)

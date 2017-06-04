@@ -42,3 +42,22 @@
     background-color: rgba(0,0,0,.1);
   }
 }
+
+.enter {
+  opacity: 0;
+  transition: opacity linear 300ms;
+}
+
+.enterActive {
+  opacity: 1;
+}
+
+.leave {
+  opacity: 1;
+  transition: opacity linear 300ms;
+}
+
+.leaveActive {
+  opacity: 0;
+}
+
