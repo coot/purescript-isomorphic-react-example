@@ -4,9 +4,12 @@ import Control.Alt ((<|>))
 import Control.Monad.Except (throwError)
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (.?), (:=), (~>))
 import Data.Either (Either)
+import Data.Lens (lens)
 import Data.List (List(..), toUnfoldable, fromFoldable, (:))
+import Data.Map (Map)
 import Data.Newtype (class Newtype)
 import Prelude (class Eq, class Show, bind, pure, show, ($), (<>), (==), (>>=))
+import React.Router (class RoutePropsClass)
 
 data Locations
   = HomeRoute
@@ -17,6 +20,24 @@ derive instance eqLocations :: Eq Locations
 instance showLocations :: Show Locations where
   show HomeRoute = "/"
   show (MusicianRoute uid) = "/user/" <> show uid
+
+newtype MusicianRouteProps arg = MusicianRouteProps
+  { key :: String
+  , id :: String
+  , arg :: arg
+  , args :: Array arg
+  , query :: Map String String
+  }
+
+derive instance newtypeMusicianRouteProps :: Newtype (MusicianRouteProps arg) _
+
+instance routePropsClassMusicianRouteProps :: RoutePropsClass MusicianRouteProps Locations where
+  idLens = lens (\(MusicianRouteProps r) -> r.id) (\(MusicianRouteProps r) id_ -> MusicianRouteProps (r { id = id_ }))
+  mkProps name arg args query = MusicianRouteProps { id: name, key: locToKey arg, arg, args, query }
+    where
+      locToKey :: Locations -> String
+      locToKey HomeRoute = "home"
+      locToKey (MusicianRoute id) = "musician"
 
 newtype Musician = Musician
   { id :: Int

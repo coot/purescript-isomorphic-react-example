@@ -87,7 +87,7 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
       mus <- getProps this >>= pure <<< _.musicians
       pure $ D.ul [ P.className homeCss.musicians ] (showMusician <$> mus)
 
-homeRouteCls :: ReactClass (RouteProps Locations)
+homeRouteCls :: ReactClass (MusicianRouteProps Locations)
 homeRouteCls = createClass $  (spec unit renderFn)
     { displayName = "HomeRouteCls" }
   where
@@ -166,8 +166,7 @@ addMusicianSpec = (spec init renderFn) { displayName = "AddMusician" }
         , D.button [ P.className addMusicianCss.addButton ] [ D.text "add musician" ]
         ]
 
-
-musicianRouteCls :: ReactClass (RouteProps Locations)
+musicianRouteCls :: ReactClass (MusicianRouteProps Locations)
 musicianRouteCls = createClass $ (spec unit renderFn)
     { displayName = "MusicianRouteCls" }
   where
@@ -221,7 +220,7 @@ musician = accessContext $ createClass $ (spec unit renderFn)
               , D.div [ P.className musicianCss.generes ] [ D.text $ intercalate ", " m.generes ]
               ]
 
-router :: Router RouteProps Locations
+router :: Router MusicianRouteProps Locations
 router =
   Route "home" (HomeRoute <$ (lit "")) homeRouteCls :+
     [ Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ []

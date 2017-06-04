@@ -24,7 +24,7 @@ import Jam.Actions (MusCmd(..))
 import Jam.App (router)
 import Jam.Server.FileServer (fileServer)
 import Jam.Server.RunDSL (addMusician, removeMusician)
-import Jam.Types (Locations, Musician, initialState, ApiResponse(..))
+import Jam.Types (ApiResponse(ApiError, ApiRemoveMusician, ApiAddMusician), Locations, Musician, MusicianRouteProps, initialState)
 import Node.Buffer (BUFFER)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
@@ -32,7 +32,7 @@ import Node.HTTP (HTTP)
 import React (ReactClass, createClassStateless, createElement)
 import React.DOM (div')
 import React.Redox (withStore)
-import React.Router (RouteProps, runRouter)
+import React.Router (runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
 import Redox (RedoxStore, ReadRedox, WriteRedox, SubscribeRedox, CreateRedox, Store, getState, mkStore, setState)
@@ -136,7 +136,7 @@ handleAppRequest store url =
   renderApp :: Store (Array Musician) -> String -> String
   renderApp store_ url_ = renderToString $ createElement (entryCls router store_) { url: url_ } []
 
-  entryCls :: Router RouteProps Locations -> Store (Array Musician) -> ReactClass { url :: String }
+  entryCls :: Router MusicianRouteProps Locations -> Store (Array Musician) -> ReactClass { url :: String }
   entryCls router store_ = withStore
     store_
     (\_ _ -> pure nonCanceler)
