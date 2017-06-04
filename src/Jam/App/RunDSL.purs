@@ -11,7 +11,7 @@ import Control.Monad.Eff.Console (error, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import DOM (DOM)
 import DOM.HTML.Types (HISTORY)
-import Data.Argonaut (Json, decodeJson, encodeJson)
+import Data.Argonaut (decodeJson, encodeJson)
 import Data.Array (foldMap)
 import Data.Either (Either(..))
 import Data.Foldable (foldl, sequence_)
@@ -19,10 +19,11 @@ import Data.Newtype (ala, un)
 import Data.Ord.Max (Max(..))
 import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
-import Network.HTTP.Affjax (AJAX, Affjax, post)
+import Network.HTTP.Affjax (AJAX, post)
 import React.Router (goTo)
-import Redox (REDOX, Store, getState, getSubs)
+import Redox (Store, getState, getSubs)
 import Redox.Free (Interp)
+import Redox.Store (REDOX)
 
 newtype RunApp eff a = RunApp
   { addMusician :: NewMusician -> Aff eff a
@@ -66,7 +67,16 @@ mkAppInterp store state = unfoldCofree id next state
                   then A.snoc acu (Musician r { id = newId })
                   else A.snoc acu m_
 
-          onError :: forall err. Show err => err -> Eff _ Unit
+          onError :: forall err. Show err => err -> Eff
+            ( console :: CONSOLE
+            , redox :: REDOX
+            , ajax :: AJAX
+            , dom :: DOM
+            , err :: EXCEPTION
+            , history :: HISTORY
+            | eff
+            )
+            Unit
           onError err = do
             error $ show err
             _ <- pure $ removeM mId <$> store
@@ -93,7 +103,16 @@ mkAppInterp store state = unfoldCofree id next state
       let
         apiRequest = post "/api" (encodeJson $ (RemoveMusician m id :: MusCmd (Array Musician -> Array Musician)))
 
-        onError :: forall err. Show err => err -> Eff _ Unit
+        onError :: forall err. Show err => err -> Eff
+          ( console :: CONSOLE
+          , ajax :: AJAX
+          , dom :: DOM
+          , err :: EXCEPTION
+          , history :: HISTORY
+          , redox :: REDOX
+          | eff
+          )
+          Unit
         onError err = do
           error $ show err
           _ <- pure $ addM m <$> store
