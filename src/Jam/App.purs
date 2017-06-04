@@ -35,7 +35,7 @@ import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactState, 
 import React.DOM.Props (unsafeFromPropsArray)
 import React.ReactTranstionGroup (createCSSTransitionGroupElement, defaultCSSTransitionGroupProps, tagNameToComponent)
 import React.Redox (connect, dispatch, withStore)
-import React.Router (Route(Route), browserRouterClass, goTo, link, link', (:+))
+import React.Router (Route(Route), browserRouterClass, defaultConfig, goTo, link, link', (:+))
 import React.Router.Types (Router)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
@@ -93,7 +93,7 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
   where
 
     showMusician :: Musician -> ReactElement
-    showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' ("/user/" <> show u.id) [ D.text u.name ] ]
+    showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' defaultConfig ("/user/" <> show u.id) [ D.text u.name ] ]
 
     renderFn this = do
       mus <- getProps this >>= pure <<< _.musicians
@@ -110,7 +110,7 @@ homeRouteCls = createClass $ (spec unit renderFn)
     renderFn this = do
       chlds <- getChildren this
       pure $ D.main' $
-        [ link { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
+        [ link defaultConfig { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
         , createElement indexConn unit []
         , createElement addMusician unit []
         , createCSSTransitionGroupElement
@@ -221,7 +221,7 @@ musician = accessContext $ createClass $ (spec unit renderFn)
       case mm of
         Just m -> do
           void $ dispatch this $ removeMusician m
-          goTo (show HomeRoute)
+          goTo defaultConfig (show HomeRoute)
         Nothing -> pure unit
 
     renderFn this = do
@@ -263,7 +263,7 @@ main = do
     let estate = parse jsonStr
     logParseErr estate
     st <- mkStore (either (const initialState) id estate)
-    let cls = withStore st (dispatch st) browserRouterClass
+    let cls = withStore st (dispatch st) (browserRouterClass defaultConfig)
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
     dispatch store = Redox.dispatch (const $ pure unit) (mkInterpret store)

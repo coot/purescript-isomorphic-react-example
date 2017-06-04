@@ -6,7 +6,6 @@ import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Control.Monad.Error.Class (catchError, throwError)
 import Control.Monad.Free (Free, liftF)
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (:=), (~>), (.?))
-import Data.Either (Either)
 import Data.List (fromFoldable, toUnfoldable)
 import Jam.Types (Musician(..), NewMusician)
 

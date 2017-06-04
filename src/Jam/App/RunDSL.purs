@@ -20,7 +20,7 @@ import Data.Ord.Max (Max(..))
 import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, post)
-import React.Router (goTo)
+import React.Router (defaultConfig, goTo)
 import Redox (Store, getState, getSubs)
 import Redox.Free (Interp)
 import Redox.Store (REDOX)
@@ -117,7 +117,7 @@ mkAppInterp store state = unfoldCofree id next state
           error $ show err
           _ <- pure $ addM m <$> store
           runSubscriptions
-          goTo (show $ MusicianRoute mId)
+          goTo defaultConfig (show $ MusicianRoute mId)
 
         onSuccess { response } = 
           case decodeJson response of
