@@ -1,10 +1,5 @@
 module Jam.App where
 
-import Prelude
-import Data.Array as A
-import Data.List as L
-import React.DOM as D
-import React.DOM.Props as P
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, warn)
 import Control.Monad.Eff.Timer (TIMER)
@@ -17,11 +12,13 @@ import DOM.Node.Node (textContent)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode, elementToNode)
 import Data.Argonaut (Json, decodeJson, jsonParser)
+import Data.Array as A
 import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
 import Data.List (List(..))
+import Data.List as L
 import Data.Maybe (Maybe(..), fromJust, maybe, maybe')
 import Data.Newtype (class Newtype, un, unwrap)
 import Data.StrMap (StrMap, lookup)
@@ -31,8 +28,11 @@ import Jam.App.RunDSL (mkInterpret)
 import Jam.Types (Locations(MusicianRoute, HomeRoute), Musician(Musician), MusicianRouteProps, NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
+import Prelude (Unit, bind, const, discard, id, pure, show, unit, void, ($), (*>), (<$), (<$>), (<<<), (<>), (==), (>>=))
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactState, ReactThis, ReadWrite, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import React.DOM as D
 import React.DOM.Props (unsafeFromPropsArray)
+import React.DOM.Props as P
 import React.ReactTranstionGroup (createCSSTransitionGroupElement, defaultCSSTransitionGroupProps, tagNameToComponent)
 import React.Redox (connect, dispatch, withStore)
 import React.Router (Route(Route), browserRouterClass, defaultConfig, goTo, link, link', (:+))
@@ -96,7 +96,7 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
     showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' defaultConfig ("/user/" <> show u.id) [ D.text u.name ] ]
 
     renderFn this = do
-      mus <- getProps this >>= pure <<< _.musicians
+      { musicians: mus } <- getProps this
       pure $ D.ul [ P.className homeCss.musicians ] (showMusician <$> mus)
 
 homeRouteCls :: ReactClass (MusicianRouteProps Locations)
