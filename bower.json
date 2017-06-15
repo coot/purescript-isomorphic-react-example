@@ -10,7 +10,7 @@
     "purescript-prelude": "^3.0.0",
     "purescript-console": "^3.0.0",
     "purescript-react": "^3.0.0",
-    "purescript-cofree-react-router": "^5.0.0",
+    "purescript-cofree-react-router": "^6.0.0",
     "purescript-hyper": "^0.7.3",
     "purescript-redox": "^5.0.0",
     "purescript-react-redox": "^0.8.0",

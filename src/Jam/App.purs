@@ -17,7 +17,7 @@ import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
-import Data.List (List(..))
+import Data.List (List(..), (:))
 import Data.List as L
 import Data.Maybe (Maybe(..), fromJust, maybe, maybe')
 import Data.Newtype (class Newtype, un, unwrap)
@@ -244,8 +244,8 @@ musician = accessContext $ createClass $ (spec unit renderFn)
 router :: Router MusicianRouteProps Locations
 router =
   Route "home" (HomeRoute <$ (lit "")) homeRouteCls :+
-    [ Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ []
-    ]
+    (Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ Nil)
+    : Nil
 
 foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Window -> Eff (dom :: DOM | eff) (Maybe Json)
 

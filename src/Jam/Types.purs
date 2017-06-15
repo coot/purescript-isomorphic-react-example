@@ -1,15 +1,17 @@
 module Jam.Types where
 
 import Control.Alt ((<|>))
+import Control.Comonad.Cofree (Cofree)
 import Control.Monad.Except (throwError)
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, jsonEmptyObject, (.?), (:=), (~>))
 import Data.Either (Either)
 import Data.Lens (lens)
-import Data.List (List(..), toUnfoldable, fromFoldable, (:))
+import Data.List (List(..), fromFoldable, toUnfoldable, (:))
 import Data.Map (Map)
 import Data.Newtype (class Newtype)
 import Prelude (class Eq, class Show, bind, pure, show, ($), (<>), (==), (>>=))
 import React.Router (class RoutePropsClass)
+import Routing.Types (Route) as R
 
 data Locations
   = HomeRoute
@@ -25,15 +27,16 @@ newtype MusicianRouteProps arg = MusicianRouteProps
   { key :: String
   , id :: String
   , arg :: arg
-  , args :: Array arg
+  , args :: List arg
   , query :: Map String String
+  , tail :: List (Cofree List { url :: R.Route, arg :: arg })
   }
 
 derive instance newtypeMusicianRouteProps :: Newtype (MusicianRouteProps arg) _
 
 instance routePropsClassMusicianRouteProps :: RoutePropsClass MusicianRouteProps Locations where
   idLens = lens (\(MusicianRouteProps r) -> r.id) (\(MusicianRouteProps r) id_ -> MusicianRouteProps (r { id = id_ }))
-  mkProps name arg args query = MusicianRouteProps { id: name, key: locToKey arg, arg, args, query }
+  mkProps name arg args query tail = MusicianRouteProps { id: name, key: locToKey arg, arg, args, query, tail }
     where
       locToKey :: Locations -> String
       locToKey HomeRoute = "home"
