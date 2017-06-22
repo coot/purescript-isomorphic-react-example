@@ -1,7 +1,7 @@
 module Jam.App.RunDSL where
 
 import Prelude
-import Data.Array as A
+
 import Control.Comonad.Cofree (Cofree, exploreM, unfoldCofree)
 import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.Console (CONSOLE)
@@ -13,6 +13,7 @@ import DOM (DOM)
 import DOM.HTML.Types (HISTORY)
 import Data.Argonaut (decodeJson, encodeJson)
 import Data.Array (foldMap)
+import Data.Array as A
 import Data.Either (Either(..))
 import Data.Foldable (foldl, sequence_)
 import Data.Newtype (ala, un)
@@ -21,9 +22,10 @@ import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, post)
 import React.Router (defaultConfig, goTo)
-import Redox (Store, getState, getSubscriptions)
+import Redox (Store, getState, getSubscriptions, addLogger)
 import Redox.Free (Interp)
 import Redox.Store (REDOX)
+import Unsafe.Coerce (unsafeCoerce)
 
 newtype RunApp eff a = RunApp
   { addMusician :: NewMusician -> Aff eff a
@@ -39,7 +41,7 @@ mkAppInterp
    . Store (Array Musician)
   -> Array Musician
   -> AppInterp (ajax :: AJAX, console :: CONSOLE, redox :: REDOX, dom :: DOM, history :: HISTORY, err :: EXCEPTION | eff) (Array Musician)
-mkAppInterp store state = unfoldCofree id next state
+mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
   where
 
     runSubscriptions = do
