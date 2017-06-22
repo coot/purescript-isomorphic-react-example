@@ -12,8 +12,8 @@
     "purescript-react": "^3.0.0",
     "purescript-cofree-react-router": "^6.0.0",
     "purescript-hyper": "^0.7.3",
-    "purescript-redox": "^5.0.0",
-    "purescript-react-redox": "^0.8.0",
+    "purescript-redox": "^6.0.0",
+    "purescript-react-redox": "^0.9.0",
     "purescript-react-transition-group": "^0.1.0",
     "purescript-free": "^4.0.0",
     "purescript-argonaut": "^3.0.0",
@@ -25,5 +25,8 @@
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0"
+  },
+  "resolutions": {
+    "purescript-js-date": "^5.0.0"
   }
 }

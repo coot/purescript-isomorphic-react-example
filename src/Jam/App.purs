@@ -42,6 +42,7 @@ import ReactHocs.Context (accessContext)
 import Redox (RedoxStore, ReadRedox, CreateRedox, SubscribeRedox, WriteRedox, mkStore)
 import Redox (dispatch) as Redox
 import Routing.Match.Class (int, lit)
+import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import addMusicianCss ::
@@ -103,7 +104,7 @@ homeRouteCls :: ReactClass (MusicianRouteProps Locations)
 homeRouteCls = createClass $ (spec unit renderFn)
     { displayName = "HomeRouteCls" }
   where
-    indexConn = connect (to id) (\_ musicians _ -> { musicians }) index
+    indexConn = connect (Proxy :: Proxy (Array Musician)) (to id) (\_ musicians _ -> { musicians }) index
 
     addMusician = accessContext $ createClass addMusicianSpec
 
@@ -202,7 +203,7 @@ musicianRouteCls = createClass $ (spec unit renderFn)
         Just idx -> A.index mus idx
 
     musicianConn :: ReactClass { mId :: Int }
-    musicianConn = connect (to id) (\_ mus { mId } -> { musician: findMus mus mId }) musician
+    musicianConn = connect (Proxy :: Proxy (Array Musician)) (to id) (\_ mus { mId } -> { musician: findMus mus mId }) musician
 
     renderFn this = do
       mId <- getProps this >>= pure <<< unsafePartial unsafeMusicianId <<< _.arg <<< unwrap

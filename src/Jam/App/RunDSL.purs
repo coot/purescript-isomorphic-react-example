@@ -21,7 +21,7 @@ import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, post)
 import React.Router (defaultConfig, goTo)
-import Redox (Store, getState, getSubs)
+import Redox (Store, getState, getSubscriptions)
 import Redox.Free (Interp)
 import Redox.Store (REDOX)
 
@@ -43,7 +43,7 @@ mkAppInterp store state = unfoldCofree id next state
   where
 
     runSubscriptions = do
-      subs <- getSubs store
+      subs <- getSubscriptions store
       sta <- getState store
       sequence_ ((_ $ sta) <$> subs)
 
