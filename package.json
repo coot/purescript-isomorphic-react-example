@@ -14,7 +14,8 @@
     "mime": "^1.3.6",
     "mkdirp": "^0.5.1",
     "react": "^15.5.4",
-    "react-dom": "^15.5.4"
+    "react-dom": "^15.5.4",
+    "react-transition-group": "^1.1.3"
   },
   "devDependencies": {
     "autoprefixer": "^7.0.1",
@@ -37,6 +38,7 @@
     "postinstall": "bower install",
     "buildComment": "echo 'client build builds inside `.build/Jam.App/`, so that we can use relative imports in both client and server.'",
     "build": "mkdirp 'dist/static'; mkdirp '.build/Jam.App'; pulp build -m Jam.App -t .build/Jam.App/index.js; browserify -p [css-modulesify -o dist/static/style.css --after 'postcss-import' --after postcss-url --after postcss-assets --after postcss-cssnext --after postcss-nested --after postcss-custom-media --after postcss-will-change --after postcss-custom-media ] -o dist/static/index.js .build/Jam.App/index.js",
+    "watch": "mkdirp 'dist/static'; mkdirp '.build/Jam.App'; pulp -w build -m Jam.App -t .build/Jam.App/index.js& watchify -p [css-modulesify -o dist/static/style.css --after 'postcss-import' --after postcss-url --after postcss-assets --after postcss-cssnext --after postcss-nested --after postcss-custom-media --after postcss-will-change --after postcss-custom-media ] -o dist/static/index.js .build/Jam.App/index.js",
     "prestart": "mkdirp '.build/Jam.Server'; pulp build -m Jam.Server -t .build/Jam.Server/index.js",
     "start": "node start.js",
     "test": "echo \"Error: no test specified\" && exit 1"

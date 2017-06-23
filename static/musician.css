@@ -1,5 +1,10 @@
 @value mainColor from "./style.css";
 
+.container {
+  position: relative;
+  max-width: 500px;
+}
+
 .title {
   color: mainColor;
   font-weight: lighter;
@@ -19,3 +24,40 @@
   display: block;
   margin-top: 10px;
 }
+
+.remove {
+  position: absolute;
+  display: block;
+  top: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  transition: background-color .2s linear;
+
+  background: none;
+  border: none;
+  border-radius: 50%;
+
+  &:hover {
+    background-color: rgba(0,0,0,.1);
+  }
+}
+
+.enter {
+  opacity: 0;
+  transition: opacity linear 300ms;
+}
+
+.enterActive {
+  opacity: 1;
+}
+
+.leave {
+  opacity: 1;
+  transition: opacity linear 300ms;
+}
+
+.leaveActive {
+  opacity: 0;
+}
+

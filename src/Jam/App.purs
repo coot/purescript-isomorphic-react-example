@@ -1,12 +1,8 @@
 module Jam.App where
 
-import Prelude
-import Data.Array as A
-import Data.List as L
-import React.DOM as D
-import React.DOM.Props as P
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, warn)
+import Control.Monad.Eff.Timer (TIMER)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import DOM (DOM)
 import DOM.HTML (window)
@@ -16,29 +12,37 @@ import DOM.Node.Node (textContent)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode, elementToNode)
 import Data.Argonaut (Json, decodeJson, jsonParser)
+import Data.Array as A
 import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
-import Data.List (List(..))
-import Data.Maybe (Maybe(..), fromJust, maybe')
-import Data.Newtype (class Newtype, unwrap)
+import Data.List (List(..), (:))
+import Data.List as L
+import Data.Maybe (Maybe(..), fromJust, maybe, maybe')
+import Data.Newtype (class Newtype, un, unwrap)
 import Data.StrMap (StrMap, lookup)
 import Data.String (Pattern(..), split, trim, null) as S
-import Jam.Actions (addMusician)
+import Jam.Actions (addMusician, removeMusician)
 import Jam.App.RunDSL (mkInterpret)
-import Jam.Types (Musician(..), NewMusician, initialState)
+import Jam.Types (Locations(MusicianRoute, HomeRoute), Musician(Musician), MusicianRouteProps, NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
-import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import Prelude (Unit, bind, const, discard, id, pure, show, unit, void, ($), (*>), (<$), (<$>), (<<<), (<>), (==), (>>=))
+import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactState, ReactThis, ReadWrite, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import React.DOM as D
+import React.DOM.Props (unsafeFromPropsArray)
+import React.DOM.Props as P
+import React.ReactTranstionGroup (createCSSTransitionGroupElement, defaultCSSTransitionGroupProps, tagNameToComponent)
 import React.Redox (connect, dispatch, withStore)
-import React.Router (Route(..), RouteProps, browserRouterClass, link, link', (:+))
+import React.Router (Route(Route), browserRouterClass, defaultConfig, goTo, link, link', (:+))
 import React.Router.Types (Router)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
-import Redox (REDOX, mkStore)
+import Redox (RedoxStore, ReadRedox, CreateRedox, SubscribeRedox, WriteRedox, mkStore)
 import Redox (dispatch) as Redox
 import Routing.Match.Class (int, lit)
+import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import addMusicianCss ::
@@ -59,6 +63,17 @@ foreign import musicianCss ::
   , description :: String
   , generes :: String
   , wikiLink :: String
+  , remove :: String
+  , container :: String
+  }
+
+foreign import musicianTransitionCss ::
+  { enter :: String
+  , enterActive :: String
+  , leave :: String
+  , leaveActive :: String
+  , appear :: String
+  , appearActive :: String
   }
 
 foreign import styleCss :: {}
@@ -70,16 +85,6 @@ unsafeLookup n = maybe' (const err) id <<< lookup n
       warn ("className lookup failed for '" <> n <> "'")
       pure ""
 
-data Locations
-  = HomeRoute
-  | MusicianRoute Int
-
-derive instance eqLocations :: Eq Locations
-
-instance showLocations :: Show Locations where
-  show HomeRoute = "/"
-  show (MusicianRoute uid) = "/user/" <> show uid
-
 newtype Store = Store (Array Musician)
 
 derive instance newtypeStore :: Newtype Store _
@@ -89,31 +94,40 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
   where
 
     showMusician :: Musician -> ReactElement
-    showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' ("/user/" <> show u.id) [ D.text u.name ] ]
+    showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' defaultConfig ("/user/" <> show u.id) [ D.text u.name ] ]
 
     renderFn this = do
-      mus <- getProps this >>= pure <<< _.musicians
+      { musicians: mus } <- getProps this
       pure $ D.ul [ P.className homeCss.musicians ] (showMusician <$> mus)
 
-homeRouteCls :: ReactClass (RouteProps Locations)
-homeRouteCls = createClass $  (spec unit renderFn)
+homeRouteCls :: ReactClass (MusicianRouteProps Locations)
+homeRouteCls = createClass $ (spec unit renderFn)
     { displayName = "HomeRouteCls" }
   where
-    indexConn = connect (to id) (\_ musicians _ -> { musicians }) index
+    indexConn = connect (Proxy :: Proxy (Array Musician)) (to id) (\_ musicians _ -> { musicians }) index
 
     addMusician = accessContext $ createClass addMusicianSpec
 
     renderFn this = do
       chlds <- getChildren this
       pure $ D.main' $
-        [ link { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
+        [ link defaultConfig { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
         , createElement indexConn unit []
         , createElement addMusician unit []
+        , createCSSTransitionGroupElement
+            (defaultCSSTransitionGroupProps
+              { component = tagNameToComponent "div"
+              , transitionName = musicianTransitionCss
+              , transitionEnterTimeout = 300
+              , transitionLeaveTimeout = 300
+              })
+            (unsafeFromPropsArray [])
+            chlds
         ]
-        <> chlds
 
-addMusicianSpec :: forall eff. ReactSpec Unit NewMusician  eff
-addMusicianSpec = (spec init renderFn) { displayName = "AddMusician" }
+addMusicianSpec :: forall eff. ReactSpec Unit NewMusician (timer :: TIMER | eff)
+addMusicianSpec = (spec init renderFn)
+    { displayName = "AddMusician" }
   where
     init = { name: "", description: "", wiki: "", generes: Nil }
 
@@ -174,8 +188,7 @@ addMusicianSpec = (spec init renderFn) { displayName = "AddMusician" }
         , D.button [ P.className addMusicianCss.addButton ] [ D.text "add musician" ]
         ]
 
-
-musicianRouteCls :: ReactClass (RouteProps Locations)
+musicianRouteCls :: ReactClass (MusicianRouteProps Locations)
 musicianRouteCls = createClass $ (spec unit renderFn)
     { displayName = "MusicianRouteCls" }
   where
@@ -190,22 +203,30 @@ musicianRouteCls = createClass $ (spec unit renderFn)
         Just idx -> A.index mus idx
 
     musicianConn :: ReactClass { mId :: Int }
-    musicianConn = connect (to id) (\_ mus { mId } -> { musician: findMus mus mId }) musician
+    musicianConn = connect (Proxy :: Proxy (Array Musician)) (to id) (\_ mus { mId } -> { musician: findMus mus mId }) musician
 
     renderFn this = do
       mId <- getProps this >>= pure <<< unsafePartial unsafeMusicianId <<< _.arg <<< unwrap
       pure $ createElement musicianConn { mId } []
 
 musician :: ReactClass { musician :: Maybe Musician }
-musician = createClass $ (spec unit renderFn)
+musician = accessContext $ createClass $ (spec unit renderFn)
     { displayName = "Musician" }
   where
 
     unsafeMusicianId :: Partial => Locations -> Int
     unsafeMusicianId l = case l of MusicianRoute id_ -> id_
 
+    removeHandler this ev = do
+      { musician: mm } <- getProps this
+      case mm of
+        Just m -> do
+          void $ dispatch this $ removeMusician m
+          goTo defaultConfig (show HomeRoute)
+        Nothing -> pure unit
+
     renderFn this = do
-      mm <- _.musician <$> getProps this
+      { musician: mm } <- getProps this
       case mm of
         Nothing -> pure $ D.main' []
         Just (Musician m) ->
@@ -214,24 +235,27 @@ musician = createClass $ (spec unit renderFn)
                            then []
                            else [ D.a [ P.href wikiHref, P.className musicianCss.wikiLink ] [ D.text "Read more on WikiPedia." ] ]
           in do
-            pure $ D.main'
+            pure $ D.main [ P.key ("musician-" <> (maybe "" (show <<< _.id <<< un Musician) mm)), P.className musicianCss.container ]
               [ D.h1 [ P.className musicianCss.title ] [ D.text m.name ]
+              , D.button [ P.className musicianCss.remove, P.onClick $ removeHandler this ] [ D.text "ㄨ" ]
               , D.p [ P.className musicianCss.description ] ([ D.text m.description ] <> wikiElem)
               , D.div [ P.className musicianCss.generes ] [ D.text $ intercalate ", " m.generes ]
               ]
 
-router :: Router RouteProps Locations
+router :: Router MusicianRouteProps Locations
 router =
   Route "home" (HomeRoute <$ (lit "")) homeRouteCls :+
-    [ Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ []
-    ]
+    (Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ Nil)
+    : Nil
 
 foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Window -> Eff (dom :: DOM | eff) (Maybe Json)
 
 readRedoxState :: forall eff. Window -> Eff (dom :: DOM | eff) (Maybe Json)
 readRedoxState = readRedoxState_ Just Nothing
 
-main :: forall eff. Eff (dom :: DOM, redox :: REDOX, console :: CONSOLE, ajax :: AJAX | eff) Unit
+main :: forall eff. Eff
+  (dom :: DOM, redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox), console :: CONSOLE, ajax :: AJAX | eff)
+  Unit
 main = do
     w <- window
     ms <- readRedoxState w
@@ -240,7 +264,7 @@ main = do
     let estate = parse jsonStr
     logParseErr estate
     st <- mkStore (either (const initialState) id estate)
-    let cls = withStore st (dispatch st) browserRouterClass
+    let cls = withStore st (dispatch st) (browserRouterClass defaultConfig)
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
     dispatch store = Redox.dispatch (const $ pure unit) (mkInterpret store)
