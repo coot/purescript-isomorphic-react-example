@@ -7,7 +7,7 @@
     "test": "test"
   },
   "dependencies": {
-    "create-react-class": "^15.5.3",
+    "create-react-class": "^15.6.0",
     "css-modules-require-hook": "^4.0.6",
     "gulp": "^3.9.1",
     "gulp-nodemon": "^2.2.1",
