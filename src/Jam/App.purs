@@ -1,5 +1,7 @@
 module Jam.App where
 
+import Prelude
+
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, warn)
 import Control.Monad.Eff.Timer (TIMER)
@@ -28,8 +30,7 @@ import Jam.App.RunDSL (mkInterpret)
 import Jam.Types (Locations(MusicianRoute, HomeRoute), Musician(Musician), MusicianRouteProps, NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
-import Prelude (Unit, bind, const, discard, id, pure, show, unit, void, ($), (*>), (<$), (<$>), (<<<), (<>), (==), (>>=))
-import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactState, ReactThis, ReadWrite, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
 import React.DOM as D
 import React.DOM.Props (unsafeFromPropsArray)
 import React.DOM.Props as P

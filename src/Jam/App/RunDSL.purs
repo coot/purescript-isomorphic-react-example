@@ -22,9 +22,9 @@ import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, post)
 import React.Router (defaultConfig, goTo)
-import Redox (Store, getState, getSubscriptions, addLogger)
+import Redox (REDOX, Store, getState, getSubscriptions)
 import Redox.Free (Interp)
-import Redox.Store (REDOX)
+import Redox.Utils (addLogger)
 import Unsafe.Coerce (unsafeCoerce)
 
 newtype RunApp eff a = RunApp
@@ -98,7 +98,9 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
           apiRequest = post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician)))
       in do
         -- run api request asynchronously
-        _ <- liftEff $ runAff onError onSuccess apiRequest
+        _ <- liftEff $ do
+          log $ "AddMusician " <> (show mus)
+          runAff onError onSuccess apiRequest
         pure $ A.snoc st mus
 
     removeMusician st m@(Musician {id: mId}) =
@@ -121,7 +123,7 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
           runSubscriptions
           goTo defaultConfig (show $ MusicianRoute mId)
 
-        onSuccess { response } = 
+        onSuccess { response } =
           case decodeJson response of
             Right r@ApiRemoveMusician ->
               log $ "api resp: " <> show r
@@ -130,7 +132,9 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
             Left err ->
               onError err
       in do
-        _ <- liftEff $ runAff onError onSuccess apiRequest
+        _ <- liftEff $ do
+          log $ "removeMusician " <> (show m)
+          runAff onError onSuccess apiRequest
         pure $ A.filter (\(Musician m_) -> m_.id /= mId) st
 
     next st = RunApp
@@ -141,8 +145,8 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
 mkInterpret
   :: forall eff
    . Store (Array Musician)
-   -> Interp MusCmd (Array Musician) (ajax :: AJAX, console :: CONSOLE, redox :: REDOX, err :: EXCEPTION, history :: HISTORY, dom :: DOM | eff)
-mkInterpret store cmds st = exploreM pair cmds $ mkAppInterp store st
+   -> Interp MusCmd (Array Musician) (ajax :: AJAX, console :: CONSOLE, dom :: DOM, err :: EXCEPTION, history :: HISTORY, redox :: REDOX | eff)
+mkInterpret store cmds st = exploreM pair cmds $ addLogger unsafeCoerce (mkAppInterp store st)
   where
     pair :: forall e x y. MusCmd (x -> y) -> RunApp e x -> Aff e y
     pair (AddMusician m f) (RunApp i) = f <$> i.addMusician m
