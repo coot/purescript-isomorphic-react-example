@@ -1,10 +1,7 @@
 module Jam.App where
 
 import Prelude
-import Data.Array as A
-import Data.List as L
-import React.DOM as D
-import React.DOM.Props as P
+
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, warn)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
@@ -16,11 +13,13 @@ import DOM.Node.Node (textContent)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode, elementToNode)
 import Data.Argonaut (Json, decodeJson, jsonParser)
+import Data.Array as A
 import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
-import Data.List (List(..))
+import Data.List (List(..), (:))
+import Data.List as L
 import Data.Maybe (Maybe(..), fromJust, maybe')
 import Data.Newtype (class Newtype, unwrap)
 import Data.StrMap (StrMap, lookup)
@@ -31,14 +30,17 @@ import Jam.Types (Musician(..), NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
+import React.DOM as D
+import React.DOM.Props as P
 import React.Redox (connect, dispatch, withStore)
-import React.Router (Route(..), RouteProps, browserRouterClass, link, link', (:+))
+import React.Router (Route(..), RouteProps, browserRouterClass, defaultConfig, link, link', (:+))
 import React.Router.Types (Router)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
 import Redox (REDOX, mkStore)
 import Redox (dispatch) as Redox
 import Routing.Match.Class (int, lit)
+import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import addMusicianCss ::
@@ -89,7 +91,7 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
   where
 
     showMusician :: Musician -> ReactElement
-    showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' ("/user/" <> show u.id) [ D.text u.name ] ]
+    showMusician (Musician u) = D.li [ P.className homeCss.musician ] [ link' defaultConfig  ("/user/" <> show u.id) [ D.text u.name ] ]
 
     renderFn this = do
       mus <- getProps this >>= pure <<< _.musicians
@@ -99,14 +101,14 @@ homeRouteCls :: ReactClass (RouteProps Locations)
 homeRouteCls = createClass $  (spec unit renderFn)
     { displayName = "HomeRouteCls" }
   where
-    indexConn = connect (to id) (\_ musicians _ -> { musicians }) index
+    indexConn = connect (Proxy :: Proxy (Array Musician)) (to id) (\_ musicians _ -> { musicians }) index
 
     addMusician = accessContext $ createClass addMusicianSpec
 
     renderFn this = do
       chlds <- getChildren this
       pure $ D.main' $
-        [ link { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
+        [ link defaultConfig { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
         , createElement indexConn unit []
         , createElement addMusician unit []
         ]
@@ -190,7 +192,7 @@ musicianRouteCls = createClass $ (spec unit renderFn)
         Just idx -> A.index mus idx
 
     musicianConn :: ReactClass { mId :: Int }
-    musicianConn = connect (to id) (\_ mus { mId } -> { musician: findMus mus mId }) musician
+    musicianConn = connect (Proxy :: Proxy (Array Musician)) (to id) (\_ mus { mId } -> { musician: findMus mus mId }) musician
 
     renderFn this = do
       mId <- getProps this >>= pure <<< unsafePartial unsafeMusicianId <<< _.arg <<< unwrap
@@ -223,8 +225,8 @@ musician = createClass $ (spec unit renderFn)
 router :: Router RouteProps Locations
 router =
   Route "home" (HomeRoute <$ (lit "")) homeRouteCls :+
-    [ Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ []
-    ]
+    (Route "musician" (MusicianRoute <$> (lit "user" *> int)) musicianRouteCls :+ Nil)
+    : Nil
 
 foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (forall a. Maybe a) -> Window -> Eff (dom :: DOM | eff) (Maybe Json)
 
@@ -240,7 +242,7 @@ main = do
     let estate = parse jsonStr
     logParseErr estate
     st <- mkStore (either (const initialState) id estate)
-    let cls = withStore st (dispatch st) browserRouterClass
+    let cls = withStore st (dispatch st) (browserRouterClass defaultConfig)
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
     dispatch store = Redox.dispatch (const $ pure unit) (mkInterpret store)

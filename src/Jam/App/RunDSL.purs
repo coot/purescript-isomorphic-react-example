@@ -1,7 +1,7 @@
 module Jam.App.RunDSL where
 
 import Prelude
-import Data.Array as A
+
 import Control.Comonad.Cofree (Cofree, exploreM, unfoldCofree)
 import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.Console (CONSOLE)
@@ -9,6 +9,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (error, log)
 import Data.Argonaut (Json, decodeJson, encodeJson)
 import Data.Array (foldMap)
+import Data.Array as A
 import Data.Either (Either(..))
 import Data.Foldable (foldl, sequence_)
 import Data.Newtype (ala, un)
@@ -16,9 +17,10 @@ import Data.Ord.Max (Max(..))
 import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, Affjax, post)
-import Redox (REDOX, Store, getState, getSubs)
+import Redox (REDOX, Store, getState, getSubscriptions)
 import Redox.Free (Interp)
 import Redox.Utils (addLogger)
+import Unsafe.Coerce (unsafeCoerce)
 
 newtype RunApp eff a = RunApp
   { addMusician :: NewMusician -> Aff eff a
@@ -38,7 +40,7 @@ mkAppInterp store state = unfoldCofree id next state
   where
 
     runSubscriptions = do
-      subs <- getSubs store
+      subs <- getSubscriptions store
       sta <- getState store
       sequence_ ((_ $ sta) <$> subs)
 
@@ -134,7 +136,7 @@ mkInterpret
   :: forall eff
    . Store (Array Musician)
   -> Interp MusCmd (Array Musician) (ajax :: AJAX, console :: CONSOLE, redox :: REDOX | eff)
-mkInterpret store cmds st = exploreM pair cmds $ addLogger (mkAppInterp store st)
+mkInterpret store cmds st = exploreM pair cmds $ addLogger unsafeCoerce (mkAppInterp store st)
   where
     pair :: forall e x y. MusCmd (x -> y) -> RunApp e x -> Aff e y
     pair (AddMusician m f) (RunApp i) = f <$> i.addMusician m
