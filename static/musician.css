@@ -1,14 +1,5 @@
 @value mainColor from "./style.css";
 
-@keyframes rotate {
-  from {
-    transform: rotateZ(0deg);
-  }
-  to {
-    transform: rotateZ(360deg);
-  }
-}
-
 .container {
   position: relative;
   max-width: 500px;
@@ -21,19 +12,9 @@
   transform: translateX(0);
 }
 
-.title:hover {
-  transform: translateX(50%);
-}
-
 .description {
   font-size: .9rem;
   max-width: 500px;
-}
-
-.description:hover {
-  animation-name: rotate;
-  animation-duration: 1s;
-  animation-iteration-count: 5;
 }
 
 .generes {
