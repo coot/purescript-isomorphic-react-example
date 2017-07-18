@@ -35,8 +35,8 @@
   "scripts": {
     "postinstall": "bower install",
     "buildComment": "echo 'client build builds inside `.build/Jam.App/`, so that we can use relative imports in both client and server.'",
-    "build": "mkdirp 'dist/static'; mkdirp '.build/Jam.App'; pulp build -m Jam.App -t .build/Jam.App/index.js; browserify -p [css-modulesify -o dist/static/style.css --after 'postcss-import' --after postcss-url --after postcss-assets --after postcss-cssnext --after postcss-nested --after postcss-custom-media --after postcss-will-change --after postcss-custom-media ] -o dist/static/index.js .build/Jam.App/index.js",
-    "prestart": "mkdirp '.build/Jam.Server'; pulp build -m Jam.Server -t .build/Jam.Server/index.js",
+    "build": "mkdirp 'dist/static'; mkdirp '.build/Jam.App'; mkdirp '.build/Jam.Server'; pulp --then 'pulp build --main Jam.App --to .build/Jam.App/index.js && pulp build --main Jam.Server --to .build/Jam.Server/index.js; browserify -p [css-modulesify -o dist/static/style.css --after postcss-import --after postcss-url --after postcss-assets --after postcss-cssnext --after postcss-nested --after postcss-custom-media --after postcss-will-change --after postcss-custom-media ] -o dist/static/index.js .build/Jam.App/index.js' build",
+    "dev": "mkdirp 'dist/static'; mkdirp '.build/Jam.App'; mkdirp '.build/Jam.Server'; pulp --watch --then 'pulp build --main Jam.App --to .build/Jam.App/index.js && pulp build --main Jam.Server --to .build/Jam.Server/index.js; browserify -p [css-modulesify -o dist/static/style.css --after postcss-import --after postcss-url --after postcss-assets --after postcss-cssnext --after postcss-nested --after postcss-custom-media --after postcss-will-change --after postcss-custom-media ] -o dist/static/index.js .build/Jam.App/index.js' build",
     "start": "node start.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
