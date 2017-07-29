@@ -4,11 +4,12 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, warn)
+import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Timer (TIMER)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import DOM (DOM)
 import DOM.HTML (window)
-import DOM.HTML.Types (Window, htmlDocumentToDocument)
+import DOM.HTML.Types (HISTORY, Window, htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.Node (textContent)
 import DOM.Node.NonElementParentNode (getElementById)
@@ -254,9 +255,21 @@ foreign import readRedoxState_ :: forall eff. (forall a. a -> Maybe a) -> (foral
 readRedoxState :: forall eff. Window -> Eff (dom :: DOM | eff) (Maybe Json)
 readRedoxState = readRedoxState_ Just Nothing
 
-main :: forall eff. Eff
-  (dom :: DOM, redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox), console :: CONSOLE, ajax :: AJAX | eff)
-  Unit
+main
+  :: forall eff
+   . Eff
+      ( dom :: DOM
+      , redox :: RedoxStore
+        ( read :: ReadRedox
+        , write :: WriteRedox
+        , subscribe :: SubscribeRedox
+        , create :: CreateRedox)
+      , console :: CONSOLE
+      , ajax :: AJAX
+      , err :: EXCEPTION
+      , history :: HISTORY
+      | eff)
+      Unit
 main = do
     w <- window
     ms <- readRedoxState w
@@ -265,7 +278,7 @@ main = do
     let estate = parse jsonStr
     logParseErr estate
     st <- mkStore (either (const initialState) id estate)
-    let cls = withStore st (dispatch st) (browserRouterClass defaultConfig)
+    cls <- withStore st (dispatch st) (browserRouterClass defaultConfig)
     void $ render (createElement cls {router, notFound: Nothing} []) el
   where
     dispatch store = Redox.dispatch (const $ pure unit) (mkInterpret store)

@@ -9,12 +9,12 @@
   "dependencies": {
     "purescript-prelude": "^3.0.0",
     "purescript-console": "^3.0.0",
-    "purescript-react": "git://github.com/coot/purescript-react#react-15",
-    "purescript-cofree-react-router": "git://github.com/coot/purescript-cofree-react-router#react-15",
-    "purescript-hyper": "^0.7.3",
+    "purescript-react": "^4.0.0",
+    "purescript-cofree-react-router": "^6.1.2",
+    "purescript-hyper": "^0.8.0",
     "purescript-redox": "^6.0.0",
-    "purescript-react-redox": "git://github.com/coot/purescript-react-redox#react-15",
-    "purescript-react-transition-group": "^0.1.0",
+    "purescript-react-redox": "0.10.1",
+    "purescript-react-transition-group": "^0.1.1",
     "purescript-free": "^4.0.0",
     "purescript-argonaut": "^3.0.0",
     "purescript-orders": "^3.0.0",
@@ -27,7 +27,6 @@
     "purescript-psci-support": "^3.0.0"
   },
   "resolutions": {
-    "purescript-react": "react-15",
     "purescript-js-date": "^5.0.0"
   }
 }

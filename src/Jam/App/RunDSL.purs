@@ -22,7 +22,7 @@ import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, post)
 import React.Router (defaultConfig, goTo)
-import Redox (REDOX, Store, getState, getSubscriptions)
+import Redox (REDOX, Store, getState, getSubscriptions, modifyStore)
 import Redox.Free (Interp)
 import Redox.Utils (addLogger)
 import Unsafe.Coerce (unsafeCoerce)
@@ -81,14 +81,14 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
             Unit
           onError err = do
             error $ show err
-            _ <- pure $ removeM mId <$> store
+            _ <- pure $ modifyStore (removeM mId) store
             runSubscriptions
 
           onSuccess { response } =
             case decodeJson response of
               Right r@ApiAddMusician (Musician m_) -> do
                 log $ "api resp: " <> show r
-                _ <- pure $ updateMId mId m_.id <$> store
+                _ <- pure $ modifyStore (updateMId mId m_.id) store
                 runSubscriptions
               Right r -> do
                 onError ("api resp: " <> show r)
@@ -119,7 +119,7 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
           Unit
         onError err = do
           error $ show err
-          _ <- pure $ addM m <$> store
+          _ <- pure $ modifyStore (addM m) store
           runSubscriptions
           goTo defaultConfig (show $ MusicianRoute mId)
 
