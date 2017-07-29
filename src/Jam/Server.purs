@@ -2,13 +2,12 @@ module Jam.Server where
 
 import Prelude
 
-import Control.IxMonad (ipure, (:*>), (:>>=))
+import Control.IxMonad ((:*>), (:>>=))
 import Control.Monad.Aff (Aff, nonCanceler)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser)
 import Data.Argonaut.Core (stringify)
 import Data.Either (Either(..))
