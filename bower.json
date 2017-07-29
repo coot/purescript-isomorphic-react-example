@@ -21,7 +21,8 @@
     "purescript-affjax": "^4.0.0",
     "purescript-now": "^3.0.0",
     "purescript-js-timers": "^3.0.0",
-    "purescript-debug": "^3.0.0"
+    "purescript-debug": "^3.0.0",
+    "purescript-react-spaces": "^0.3.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0"

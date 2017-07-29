@@ -1,7 +1,5 @@
 module Jam.App where
 
-import Prelude
-
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, warn)
 import Control.Monad.Eff.Exception (EXCEPTION)
@@ -31,6 +29,7 @@ import Jam.App.RunDSL (mkInterpret)
 import Jam.Types (Locations(MusicianRoute, HomeRoute), Musician(Musician), MusicianRouteProps, NewMusician, initialState)
 import Network.HTTP.Affjax (AJAX)
 import Partial.Unsafe (unsafePartial)
+import Prelude hiding (div)
 import React (Event, EventHandlerContext, ReactClass, ReactElement, ReactSpec, ReactState, ReactThis, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, transformState, writeState)
 import React.DOM as D
 import React.DOM.Props (unsafeFromPropsArray)
@@ -39,6 +38,8 @@ import React.ReactTranstionGroup (createCSSTransitionGroupElement, defaultCSSTra
 import React.Redox (connect, dispatch, withStore)
 import React.Router (Route(Route), browserRouterClass, defaultConfig, goTo, link, link', (:+))
 import React.Router.Types (Router)
+import React.Spaces (children, element, empty, renderIn, text, (!), (^))
+import React.Spaces.DOM (button, div, h1, input, label, p, span, textarea)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
 import Redox (RedoxStore, ReadRedox, CreateRedox, SubscribeRedox, WriteRedox, mkStore)
@@ -103,7 +104,7 @@ index = createClass $ (spec unit renderFn) { displayName = "Index" }
       pure $ D.ul [ P.className homeCss.musicians ] (showMusician <$> mus)
 
 homeRouteCls :: ReactClass (MusicianRouteProps Locations)
-homeRouteCls = createClass $ (spec unit renderFn)
+homeRouteCls = createClass $ (spec unit (map (renderIn D.main') <<< renderFn))
     { displayName = "HomeRouteCls" }
   where
     indexConn = connect (Proxy :: Proxy (Array Musician)) (to id) (\_ musicians _ -> { musicians }) index
@@ -112,11 +113,12 @@ homeRouteCls = createClass $ (spec unit renderFn)
 
     renderFn this = do
       chlds <- getChildren this
-      pure $ D.main' $
-        [ link defaultConfig { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ]
-        , createElement indexConn unit []
-        , createElement addMusician unit []
-        , createCSSTransitionGroupElement
+      pure $ do
+        element (link defaultConfig { to: "/", props: [ P.className homeCss.home ] } [ D.text "home" ])
+        indexConn ^ unit
+        addMusician ^ unit
+        element $
+          createCSSTransitionGroupElement
             (defaultCSSTransitionGroupProps
               { component = tagNameToComponent "div"
               , transitionName = musicianTransitionCss
@@ -125,7 +127,6 @@ homeRouteCls = createClass $ (spec unit renderFn)
               })
             (unsafeFromPropsArray [])
             chlds
-        ]
 
 addMusicianSpec :: forall eff. ReactSpec Unit NewMusician (timer :: TIMER | eff)
 addMusicianSpec = (spec init renderFn)
@@ -170,25 +171,28 @@ addMusicianSpec = (spec init renderFn)
 
     renderFn this = do
       state <- readState this
-      pure $ D.form [ P._id "add-musician", P.className (addMusicianCss.form), P.onSubmit (submitFn this) ]
-        [ D.label [ P.className (addMusicianCss.label) ]
-          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "name" ]
-          , D.input [ P._type "text", P.value state.name, P.onChange (updateHandler this nameL) ] []
-          ]
-        , D.label [ P.className (addMusicianCss.label) ]
-          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "description" ]
-          , D.textarea [ P.value state.description, P.onChange (updateHandler this descL) ] []
-          ]
-        , D.label [ P.className (addMusicianCss.label) ]
-          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "WikiPedia link" ]
-          , D.input [ P._type "text", P.value state.wiki, P.onChange (updateHandler this wikiL) ] []
-          ]
-        , D.label [ P.className (addMusicianCss.label) ]
-          [ D.span [ P.className (addMusicianCss.labelName) ] [ D.text "geners" ]
-          , D.input [ P._type "text", P.value (view geneL state), P.onChange (updateHandler this geneL) ] []
-          ]
-        , D.button [ P.className addMusicianCss.addButton ] [ D.text "add musician" ]
-        ]
+      -- render using
+      -- [purescript-react-spaces](https://github.com/coot/purescript-react-spaces)
+      -- combinator library
+      pure $ renderIn (D.form [ P._id "add-musician", P.className (addMusicianCss.form), P.onSubmit (submitFn this) ]) $ do
+        label ! P.className (addMusicianCss.label) $ do
+          span ! P.className (addMusicianCss.labelName) $ do
+            text "name"
+          input ! P._type "text" ! P.value state.name ! P.onChange (updateHandler this nameL) $ empty
+        label ! P.className (addMusicianCss.label) $ do
+          span ! P.className (addMusicianCss.labelName) $ do
+            text "description"
+          textarea ! P.value state.description ! P.onChange (updateHandler this descL) $ empty
+        label ! P.className (addMusicianCss.label) $ do
+          span ! P.className (addMusicianCss.labelName) $ do
+            text "WikiPedia link"
+          input ! P._type "text" ! P.value state.wiki ! P.onChange (updateHandler this wikiL) $ empty
+        label ! P.className (addMusicianCss.label) $ do
+          span ! P.className (addMusicianCss.labelName) $ do
+            text "geners"
+          input ! P._type "text" ! P.value (view geneL state) ! P.onChange (updateHandler this geneL) $ empty
+        button ! P.className addMusicianCss.addButton $ do
+          text "add musician"
 
 musicianRouteCls :: ReactClass (MusicianRouteProps Locations)
 musicianRouteCls = createClass $ (spec unit renderFn)
@@ -237,12 +241,20 @@ musician = accessContext $ createClass $ (spec unit renderFn)
                            then []
                            else [ D.a [ P.href wikiHref, P.className musicianCss.wikiLink ] [ D.text "Read more on WikiPedia." ] ]
           in do
-            pure $ D.main [ P.key ("musician-" <> (maybe "" (show <<< _.id <<< un Musician) mm)), P.className musicianCss.container ]
-              [ D.h1 [ P.className musicianCss.title ] [ D.text m.name ]
-              , D.button [ P.className musicianCss.remove, P.onClick $ removeHandler this ] [ D.text "ㄨ" ]
-              , D.p [ P.className musicianCss.description ] ([ D.text m.description ] <> wikiElem)
-              , D.div [ P.className musicianCss.generes ] [ D.text $ intercalate ", " m.generes ]
-              ]
+            -- render using
+            -- [purescript-react-spaces](https://github.com/coot/purescript-react-spaces)
+            -- combinator library
+            pure $ renderIn (D.main [ P.key ("musician-" <> (maybe "" (show <<< _.id <<< un Musician) mm)), P.className musicianCss.container ])
+              do
+                h1 ! P.className musicianCss.title $ do
+                  text m.name
+                button ! P.className musicianCss.remove ! P.onClick (removeHandler this) $ do
+                  text "ㄨ"
+                p ! P.className musicianCss.description $ do
+                  text m.description
+                  children wikiElem
+                div ! P.className musicianCss.generes $ do
+                  text (intercalate ", " m.generes)
 
 router :: Router MusicianRouteProps Locations
 router =
