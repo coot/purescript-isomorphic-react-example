@@ -15,7 +15,7 @@ import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode, e
 import Data.Argonaut (Json, decodeJson, jsonParser)
 import Data.Array as A
 import Data.Either (Either(..), either)
-import Data.Foldable (intercalate)
+import Data.Foldable (intercalate, sequence_)
 import Data.Lens (lens, over, to, view)
 import Data.Lens.Types (Lens')
 import Data.List (List(..), (:))
@@ -38,8 +38,8 @@ import React.ReactTranstionGroup (createCSSTransitionGroupElement, defaultCSSTra
 import React.Redox (connect, dispatch, withStore)
 import React.Router (Route(Route), browserRouterClass, defaultConfig, goTo, link, link', (:+))
 import React.Router.Types (Router)
-import React.Spaces (children, element, empty, renderIn, text, (!), (^))
-import React.Spaces.DOM (button, div, h1, input, label, p, span, textarea)
+import React.Spaces (element, renderIn, text, (!), (^))
+import React.Spaces.DOM (a, button, div, h1, input, label, p, span, textarea)
 import ReactDOM (render)
 import ReactHocs.Context (accessContext)
 import Redox (RedoxStore, ReadRedox, CreateRedox, SubscribeRedox, WriteRedox, mkStore)
@@ -238,8 +238,10 @@ musician = accessContext $ createClass $ (spec unit renderFn)
         Just (Musician m) ->
           let wikiHref = S.trim m.wiki
               wikiElem = if S.null wikiHref
-                           then []
-                           else [ D.a [ P.href wikiHref, P.className musicianCss.wikiLink ] [ D.text "Read more on WikiPedia." ] ]
+                           then Nothing
+                           else Just do
+                             a ! P.href wikiHref ! P.className musicianCss.wikiLink $ do
+                               text "Read more on WikiPedia."
           in do
             -- render using
             -- [purescript-react-spaces](https://github.com/coot/purescript-react-spaces)
@@ -252,7 +254,7 @@ musician = accessContext $ createClass $ (spec unit renderFn)
                   text "ㄨ"
                 p ! P.className musicianCss.description $ do
                   text m.description
-                  children wikiElem
+                  sequence_ wikiElem
                 div ! P.className musicianCss.generes $ do
                   text (intercalate ", " m.generes)
 
