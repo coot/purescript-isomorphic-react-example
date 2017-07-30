@@ -178,19 +178,19 @@ addMusicianSpec = (spec init renderFn)
         label ! P.className (addMusicianCss.label) $ do
           span ! P.className (addMusicianCss.labelName) $ do
             text "name"
-          input ! P._type "text" ! P.value state.name ! P.onChange (updateHandler this nameL) $ empty
+          input ! P._type "text" ! P.value state.name ! P.onChange (updateHandler this nameL)
         label ! P.className (addMusicianCss.label) $ do
           span ! P.className (addMusicianCss.labelName) $ do
             text "description"
-          textarea ! P.value state.description ! P.onChange (updateHandler this descL) $ empty
+          textarea ! P.value state.description ! P.onChange (updateHandler this descL)
         label ! P.className (addMusicianCss.label) $ do
           span ! P.className (addMusicianCss.labelName) $ do
             text "WikiPedia link"
-          input ! P._type "text" ! P.value state.wiki ! P.onChange (updateHandler this wikiL) $ empty
+          input ! P._type "text" ! P.value state.wiki ! P.onChange (updateHandler this wikiL)
         label ! P.className (addMusicianCss.label) $ do
           span ! P.className (addMusicianCss.labelName) $ do
             text "geners"
-          input ! P._type "text" ! P.value (view geneL state) ! P.onChange (updateHandler this geneL) $ empty
+          input ! P._type "text" ! P.value (view geneL state) ! P.onChange (updateHandler this geneL)
         button ! P.className addMusicianCss.addButton $ do
           text "add musician"
 
