@@ -48,22 +48,22 @@ serveFile path = do
 -- | Extremly basic implementation of static file serving. Needs more love.
 fileServer
   :: forall m e req res c b
-  .  Monad m
+   . Monad m
   => MonadAff (fs :: FS, buffer :: BUFFER | e) m
   => Request req m
   => ResponseWritable b m Buffer
   => Response res m b
   => FilePath
   -> Middleware
-     m
-     (Conn req (res StatusLineOpen) c)
-     (Conn req (res ResponseEnded) c)
-     Unit
+      m
+      (Conn req (res StatusLineOpen) c)
+      (Conn req (res ResponseEnded) c)
+      Unit
   -> Middleware
-     m
-     (Conn req (res StatusLineOpen) c)
-     (Conn req (res ResponseEnded) c)
-     Unit
+      m
+      (Conn req (res StatusLineOpen) c)
+      (Conn req (res ResponseEnded) c)
+      Unit
 fileServer dir on404 = do
   conn ← getConn
   { url } <- getRequestData
