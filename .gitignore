@@ -2,6 +2,9 @@
 /node_modules/
 /.pulp-cache/
 /output/
+/app-output
+/server-output
+/run.js
 /generated-docs/
 /.psc*
 /.purs*
