@@ -22,8 +22,9 @@ import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, post)
 import React.Router (defaultConfig, goTo)
-import Redox (REDOX, Store, getState, getSubscriptions, modifyStore)
+import Redox (REDOX, Store, modifyStore)
 import Redox.Free (Interp)
+import Redox.Store (getState, getSubscriptions)
 import Redox.Utils (addLogger)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -55,21 +56,35 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
     removeM :: Int -> Array Musician -> Array Musician
     removeM mId = A.filter (\(Musician m_) -> m_.id /= mId)
 
-    addMusician st m =
+    addMusician m = do
+      st <- liftEff $ getState store
       let max = ala Max foldMap (_.id <<< un Musician <$> st)
           mr = { name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
           mId = max + 1
           mus = Musician { id: mId, name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
 
-          updateMId :: Int -> Int -> Array Musician -> Array Musician
-          updateMId oldId newId = foldl f []
-            where
-              f acu (m_@Musician r) =
-                if r.id == oldId
-                  then A.snoc acu (Musician r { id = newId })
-                  else A.snoc acu m_
+          apiRequest = post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician)))
+      -- run api request asynchronously
+      _ <- liftEff $ do
+        log $ "AddMusician " <> (show mus)
+        runAff (onError mId) (onSuccess mId) apiRequest
+      pure $ A.snoc st mus
 
-          onError :: forall err. Show err => err -> Eff
+      where
+        updateMId :: Int -> Int -> Array Musician -> Array Musician
+        updateMId oldId newId = foldl f []
+          where
+            f acu (m_@Musician r) =
+              if r.id == oldId
+                then A.snoc acu (Musician r { id = newId })
+                else A.snoc acu m_
+
+        onError
+          :: forall err
+           . Show err
+          => Int
+          -> err
+          -> Eff
             ( console :: CONSOLE
             , redox :: REDOX
             , ajax :: AJAX
@@ -79,44 +94,46 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
             | eff
             )
             Unit
-          onError err = do
-            error $ show err
-            _ <- pure $ modifyStore (removeM mId) store
-            runSubscriptions
+        onError mId err = do
+          error $ show err
+          _ <- pure $ modifyStore (removeM mId) store
+          runSubscriptions
 
-          onSuccess { response } =
-            case decodeJson response of
-              Right r@ApiAddMusician (Musician m_) -> do
-                log $ "api resp: " <> show r
-                _ <- pure $ modifyStore (updateMId mId m_.id) store
-                runSubscriptions
-              Right r -> do
-                onError ("api resp: " <> show r)
-              Left err -> do
-                onError err
+        onSuccess mId { response } =
+          case decodeJson response of
+            Right r@ApiAddMusician (Musician m_) -> do
+              log $ "api resp: " <> show r
+              _ <- pure $ modifyStore (updateMId mId m_.id) store
+              runSubscriptions
+            Right r -> do
+              onError mId ("api resp: " <> show r)
+            Left err -> do
+              onError mId err
 
-          apiRequest = post "/api" (encodeJson $ (AddMusician mr id :: MusCmd (Array Musician -> Array Musician)))
-      in do
-        -- run api request asynchronously
-        _ <- liftEff $ do
-          log $ "AddMusician " <> (show mus)
-          runAff onError onSuccess apiRequest
-        pure $ A.snoc st mus
-
-    removeMusician st m@(Musician {id: mId}) =
+    removeMusician m@(Musician {id: mId}) = do
+      st <- liftEff $ getState store
       let
         apiRequest = post "/api" (encodeJson $ (RemoveMusician m id :: MusCmd (Array Musician -> Array Musician)))
+      _ <- liftEff $ do
+        log $ "removeMusician " <> (show m)
+        runAff onError onSuccess apiRequest
+      pure $ A.filter (\(Musician m_) -> m_.id /= mId) st
 
-        onError :: forall err. Show err => err -> Eff
-          ( console :: CONSOLE
-          , ajax :: AJAX
-          , dom :: DOM
-          , err :: EXCEPTION
-          , history :: HISTORY
-          , redox :: REDOX
-          | eff
-          )
-          Unit
+      where
+        onError
+          :: forall err
+           . Show err
+          => err
+          -> Eff
+            ( console :: CONSOLE
+            , ajax :: AJAX
+            , dom :: DOM
+            , err :: EXCEPTION
+            , history :: HISTORY
+            , redox :: REDOX
+            | eff
+            )
+            Unit
         onError err = do
           error $ show err
           _ <- pure $ modifyStore (addM m) store
@@ -131,15 +148,10 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
               onError ("api resp: " <> show r)
             Left err ->
               onError err
-      in do
-        _ <- liftEff $ do
-          log $ "removeMusician " <> (show m)
-          runAff onError onSuccess apiRequest
-        pure $ A.filter (\(Musician m_) -> m_.id /= mId) st
 
     next st = RunApp
-      { addMusician: addMusician st
-      , removeMusician: removeMusician st
+      { addMusician: addMusician
+      , removeMusician: removeMusician
       }
 
 mkInterpret
