@@ -32,11 +32,12 @@ import Node.FS (FS)
 import Node.HTTP (HTTP)
 import React (ReactClass, createClassStateless, createElement)
 import React.DOM (div')
-import React.Redox (withStore)
+import React.Redox (withStore) as React.Redox
 import React.Router (runRouter)
 import React.Router.Types (Router)
 import ReactDOM (renderToString)
-import Redox (RedoxStore, ReadRedox, WriteRedox, SubscribeRedox, CreateRedox, Store, getState, mkStore, setState)
+import Redox (RedoxStore, ReadRedox, WriteRedox, SubscribeRedox, CreateRedox, Store)
+import Redox.Store (getState, mkStore, setState) as Redox
 
 type Effects e =
   ( http :: HTTP
@@ -82,9 +83,9 @@ handleApiRequest store =
                   :*> contentType applicationJSON
                   :*> closeHeaders
                   :*> liftEff do
-                        state <- getState store
+                        state <- Redox.getState store
                         { newMusician, newState } <- addMusician state m
-                        _ <- setState store newState
+                        _ <- Redox.setState store newState
                         pure newMusician
                   :>>= (respond <<< stringify <<< encodeJson <<< ApiAddMusician)
                 Right (RemoveMusician m _) ->
@@ -92,9 +93,9 @@ handleApiRequest store =
                   :*> contentType applicationJSON
                   :*> closeHeaders
                   :*> liftEff do
-                        state <- getState store
+                        state <- Redox.getState store
                         newState <- removeMusician state m
-                        liftEff $ setState store newState
+                        liftEff $ Redox.setState store newState
                   :*> respond (stringify $ encodeJson ApiRemoveMusician)
                 Left err ->
                   writeStatus statusBadRequest
@@ -126,7 +127,7 @@ handleAppRequest store url =
   writeStatus statusOK
   :*> contentType textHTML
   :*> closeHeaders
-  :*> liftEff (getState store)
+  :*> liftEff (Redox.getState store)
   :>>= \st ->
        (liftEff (renderApp store url)
         :: Middleware (ServerAff e)
@@ -148,7 +149,7 @@ handleAppRequest store url =
     pure $ renderToString $ createElement cls { url: url_ } []
 
   entryCls :: Router MusicianRouteProps Locations -> Store (Array Musician) -> Eff (Effects e) (ReactClass { url :: String })
-  entryCls router store_ = withStore
+  entryCls router store_ = React.Redox.withStore
     store_
     (\_ _ -> pure nonCanceler)
     (createClassStateless \props -> maybe (div' []) id (runRouter props.url router))
@@ -214,5 +215,5 @@ app store =
 main :: forall e. Eff (console :: CONSOLE, http :: HTTP, fs :: FS, buffer :: BUFFER, avar :: AVAR, redox :: RedoxStore (read :: ReadRedox, write :: WriteRedox, subscribe :: SubscribeRedox, create :: CreateRedox) | e) Unit
 main = do
   log "starting..."
-  store <- mkStore initialState
+  store <- Redox.mkStore initialState
   runServer defaultOptionsWithLogging {} (app store)

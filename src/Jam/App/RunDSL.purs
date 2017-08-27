@@ -22,9 +22,9 @@ import Jam.Actions (MusCmd(..))
 import Jam.Types (ApiResponse(..), Locations(..), Musician(..), NewMusician)
 import Network.HTTP.Affjax (AJAX, post)
 import React.Router (defaultConfig, goTo)
-import Redox (REDOX, Store, modifyStore)
+import Redox (REDOX, Store)
 import Redox.Free (Interp)
-import Redox.Store (getState, getSubscriptions)
+import Redox.Store (getState, getSubscriptions, modifyStore) as Redox
 import Redox.Utils (addLogger)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -46,8 +46,8 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
   where
 
     runSubscriptions = do
-      subs <- getSubscriptions store
-      sta <- getState store
+      subs <- Redox.getSubscriptions store
+      sta <- Redox.getState store
       sequence_ ((_ $ sta) <$> subs)
 
     addM :: Musician -> Array Musician -> Array Musician
@@ -57,7 +57,7 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
     removeM mId = A.filter (\(Musician m_) -> m_.id /= mId)
 
     addMusician m = do
-      st <- liftEff $ getState store
+      st <- liftEff $ Redox.getState store
       let max = ala Max foldMap (_.id <<< un Musician <$> st)
           mr = { name: m.name, description : m.description, wiki: m.wiki, generes: m.generes }
           mId = max + 1
@@ -96,14 +96,14 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
             Unit
         onError mId err = do
           error $ show err
-          _ <- pure $ modifyStore (removeM mId) store
+          _ <- pure $ Redox.modifyStore (removeM mId) store
           runSubscriptions
 
         onSuccess mId { response } =
           case decodeJson response of
             Right r@ApiAddMusician (Musician m_) -> do
               log $ "api resp: " <> show r
-              _ <- pure $ modifyStore (updateMId mId m_.id) store
+              _ <- pure $ Redox.modifyStore (updateMId mId m_.id) store
               runSubscriptions
             Right r -> do
               onError mId ("api resp: " <> show r)
@@ -111,7 +111,7 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
               onError mId err
 
     removeMusician m@(Musician {id: mId}) = do
-      st <- liftEff $ getState store
+      st <- liftEff $ Redox.getState store
       let
         apiRequest = post "/api" (encodeJson $ (RemoveMusician m id :: MusCmd (Array Musician -> Array Musician)))
       _ <- liftEff $ do
@@ -136,7 +136,7 @@ mkAppInterp store state = addLogger unsafeCoerce (unfoldCofree id next state)
             Unit
         onError err = do
           error $ show err
-          _ <- pure $ modifyStore (addM m) store
+          _ <- pure $ Redox.modifyStore (addM m) store
           runSubscriptions
           goTo defaultConfig (show $ MusicianRoute mId)
 
